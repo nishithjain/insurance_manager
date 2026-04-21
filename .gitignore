@@ -1,0 +1,179 @@
+# ======================================================================
+# Python (backend)
+# ======================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+.eggs/
+.Python
+build/
+develop-eggs/
+downloads/
+eggs/
+lib/
+lib64/
+parts/
+sdist/
+wheels/
+pip-wheel-metadata/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+*.cover
+.hypothesis/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# ======================================================================
+# Node / React (frontend)
+# ======================================================================
+node_modules/
+**/node_modules/
+/.pnp
+.pnp.js
+.yarn/install-state.gz
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# Frontend build artifacts
+frontend/build/
+frontend/dist/
+frontend/.cache/
+frontend/node_modules/.cache/
+frontend/coverage/
+frontend/nul
+
+# Next.js (if used)
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+lerna-debug.log*
+
+# ======================================================================
+# Android (insurance-android)
+# ======================================================================
+insurance-android/.gradle/
+insurance-android/build/
+insurance-android/**/build/
+insurance-android/captures/
+insurance-android/.externalNativeBuild/
+insurance-android/.cxx/
+insurance-android/local.properties
+insurance-android/app/release/
+insurance-android/app/debug/
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
+*.keystore
+*.jks
+# Android IDE files
+*.iml
+.navigation/
+
+# ======================================================================
+# IDE / Editors
+# ======================================================================
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# ======================================================================
+# Environment variables & secrets
+# ======================================================================
+.env
+.env.*
+!.env.example
+backend/.env
+frontend/.env
+frontend/env.txt
+*token.json*
+*credentials.json*
+*.pem
+secrets/
+
+# ======================================================================
+# Databases & local data
+# ======================================================================
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+backend/insurance.db
+dump.rdb
+
+# Local statement / data files (sensitive, do not commit)
+*.csv
+*.xlsx
+*.xls
+!**/fixtures/**/*.csv
+!**/fixtures/**/*.xlsx
+
+# ======================================================================
+# Test reports & artifacts
+# ======================================================================
+test_reports/
+test-results/
+junit.xml
+
+# ======================================================================
+# Archives & large binaries
+# ======================================================================
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.rar
+*.7z
+*.pack
+*.deb
+*.dylib
+
+# ======================================================================
+# OS-generated
+# ======================================================================
+.DS_Store
+Thumbs.db
+Desktop.ini
+ehthumbs.db
+$RECYCLE.BIN/
+
+# ======================================================================
+# Misc / project-local
+# ======================================================================
+.emergent/
+memory/test_credentials.md
+gitignore.txt
+.vercel
+.chainlit
+chainlit.md
+.ipynb_checkpoints/
