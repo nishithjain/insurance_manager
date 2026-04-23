@@ -36,7 +36,10 @@ from routers import (
 
 
 ROOT_DIR = Path(__file__).parent
-load_dotenv(ROOT_DIR / ".env")
+# ``override=True`` ensures local ``backend/.env`` values win over inherited
+# empty/system env vars (common on Windows shells), avoiding false
+# "Authentication is not configured" errors.
+load_dotenv(ROOT_DIR / ".env", override=True)
 
 
 logging.basicConfig(
