@@ -30,6 +30,16 @@ android {
             "PLACEHOLDER_API_BASE_URL",
             "\"http://127.0.0.1/api/\"",
         )
+
+        // Google Sign-In Web Client ID. Must match the backend's GOOGLE_CLIENT_ID.
+        // Override per build via gradle.properties: GOOGLE_WEB_CLIENT_ID=...
+        val googleWebClientId: String =
+            (project.findProperty("GOOGLE_WEB_CLIENT_ID") as String?) ?: ""
+        buildConfigField(
+            "String",
+            "GOOGLE_WEB_CLIENT_ID",
+            "\"$googleWebClientId\"",
+        )
     }
 
     buildTypes {
@@ -43,6 +53,13 @@ android {
                 "String",
                 "PLACEHOLDER_API_BASE_URL",
                 "\"http://127.0.0.1/api/\"",
+            )
+            val googleWebClientId: String =
+                (project.findProperty("GOOGLE_WEB_CLIENT_ID") as String?) ?: ""
+            buildConfigField(
+                "String",
+                "GOOGLE_WEB_CLIENT_ID",
+                "\"$googleWebClientId\"",
             )
         }
         debug {
@@ -118,4 +135,9 @@ dependencies {
     implementation(libs.moshi.kotlin)
 
     implementation(libs.androidx.datastore.preferences)
+
+    // Google Sign-In via the modern Credential Manager API.
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services.auth)
+    implementation(libs.googleid)
 }

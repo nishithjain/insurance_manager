@@ -6,17 +6,78 @@ import ImportExport from '@/pages/ImportExport';
 import MissedOpportunitiesPage from '@/pages/MissedOpportunitiesPage';
 import Settings from '@/pages/Settings';
 import Statistics from '@/pages/Statistics';
+import Login from '@/pages/Login';
+import UserManagement from '@/pages/UserManagement';
+import { AuthProvider } from '@/auth/AuthContext';
+import ProtectedRoute from '@/auth/ProtectedRoute';
 import '@/App.css';
 
 function AppRouter() {
   return (
     <Routes>
-      <Route path="/dashboard" element={<Dashboard />} />
-      <Route path="/import-export" element={<ImportExport />} />
-      <Route path="/missed-opportunities" element={<MissedOpportunitiesPage />} />
-      <Route path="/statements" element={<Statements />} />
-      <Route path="/settings" element={<Settings />} />
-      <Route path="/statistics" element={<Statistics />} />
+      {/* Public */}
+      <Route path="/login" element={<Login />} />
+
+      {/* Authenticated */}
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/import-export"
+        element={
+          <ProtectedRoute>
+            <ImportExport />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/missed-opportunities"
+        element={
+          <ProtectedRoute>
+            <MissedOpportunitiesPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/statements"
+        element={
+          <ProtectedRoute>
+            <Statements />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings"
+        element={
+          <ProtectedRoute>
+            <Settings />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/statistics"
+        element={
+          <ProtectedRoute>
+            <Statistics />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Admin-only */}
+      <Route
+        path="/admin/users"
+        element={
+          <ProtectedRoute requireAdmin>
+            <UserManagement />
+          </ProtectedRoute>
+        }
+      />
+
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
@@ -27,7 +88,9 @@ function App() {
   return (
     <div className="App">
       <BrowserRouter>
-        <AppRouter />
+        <AuthProvider>
+          <AppRouter />
+        </AuthProvider>
       </BrowserRouter>
     </div>
   );

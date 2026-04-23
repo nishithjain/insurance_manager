@@ -1,7 +1,9 @@
 package com.insurance.mobile.di
 
 import com.insurance.mobile.BuildConfig
+import com.insurance.mobile.core.auth.AuthInterceptor
 import com.insurance.mobile.core.network.DynamicHostInterceptor
+import com.insurance.mobile.core.network.api.AuthApi
 import com.insurance.mobile.core.network.api.CustomerApi
 import com.insurance.mobile.core.network.api.PolicyApi
 import com.insurance.mobile.core.network.api.RenewalApi
@@ -49,12 +51,16 @@ object NetworkModule {
     fun provideOkHttpClient(
         loggingInterceptor: HttpLoggingInterceptor,
         dynamicHostInterceptor: DynamicHostInterceptor,
+        authInterceptor: AuthInterceptor,
     ): OkHttpClient =
         OkHttpClient.Builder()
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
+            // Order matters: rewrite host first, then stamp the Authorization
+            // header so the logger can record the final outgoing request.
             .addInterceptor(dynamicHostInterceptor)
+            .addInterceptor(authInterceptor)
             .addInterceptor(loggingInterceptor)
             .build()
 
@@ -85,4 +91,8 @@ object NetworkModule {
     @Provides
     fun provideRenewalApi(retrofit: Retrofit): RenewalApi =
         retrofit.create(RenewalApi::class.java)
+
+    @Provides
+    fun provideAuthApi(retrofit: Retrofit): AuthApi =
+        retrofit.create(AuthApi::class.java)
 }

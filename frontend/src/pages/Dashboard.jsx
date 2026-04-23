@@ -43,6 +43,7 @@ import AddInsuranceDialog from '@/components/AddInsuranceDialog';
 import AddCustomerDialog from '@/components/AddCustomerDialog';
 import EditPolicyDialog from '@/components/EditPolicyDialog';
 import PendingPaymentsSection from '@/components/PendingPaymentsSection';
+import UserMenu from '@/components/UserMenu';
 import { isPendingPaymentStatus } from '@/utils/paymentStatus';
 import {
   buildWhatsAppMessage,
@@ -543,6 +544,7 @@ const Dashboard = () => {
                   Statement CSV
                 </Button>
               </Link>
+              <UserMenu />
             </div>
           </div>
         </div>

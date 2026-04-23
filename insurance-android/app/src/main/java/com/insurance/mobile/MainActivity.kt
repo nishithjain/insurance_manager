@@ -13,7 +13,8 @@ import com.insurance.mobile.ui.theme.InsuranceTheme
 import dagger.hilt.android.AndroidEntryPoint
 
 /**
- * Single activity: hosts [InsuranceRoot] (main app; no sign-in).
+ * Single activity: hosts [InsuranceRoot]. The root graph handles Google
+ * Sign-In and gates access to the main shell; this class stays thin.
  */
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {

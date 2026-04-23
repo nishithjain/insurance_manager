@@ -226,6 +226,25 @@ CREATE TABLE IF NOT EXISTS app_settings (
     value TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );
+
+-- Authentication identity (separate from data-owner `users` table).
+-- An `app_users` row represents a human who can log in; role decides what they can do.
+-- Admins manage this table; regular users never hit it directly.
+CREATE TABLE IF NOT EXISTS app_users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    full_name TEXT NOT NULL,
+    role TEXT NOT NULL CHECK (role IN ('admin', 'user')),
+    is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1)),
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    created_by INTEGER,
+    last_login_at TEXT,
+    FOREIGN KEY (created_by) REFERENCES app_users(id) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_app_users_email ON app_users(email);
+CREATE INDEX IF NOT EXISTS idx_app_users_role ON app_users(role);
 """
 
 
@@ -238,6 +257,56 @@ async def _migrate_legacy_columns(db: aiosqlite.Connection) -> None:
     await _migrate_app_settings_table(db)
     await _migrate_policy_payment_columns(db)
     await _migrate_payment_status_vocabulary(db)
+    await _bootstrap_initial_admin(db)
+
+
+async def _bootstrap_initial_admin(db: aiosqlite.Connection) -> None:
+    """
+    Seed the very first admin from ``INITIAL_ADMIN_EMAIL`` (+ optional
+    ``INITIAL_ADMIN_NAME``) when the auth table has no admins yet.
+
+    This is the only way a brand-new deployment gets its first admin — subsequent
+    admins are created through the admin UI by an already-logged-in admin. If the
+    env var is unset, the function is a no-op and the UI will simply refuse all
+    logins (correctly) until an operator seeds one manually.
+    """
+    async with db.execute(
+        "SELECT COUNT(*) FROM app_users WHERE role = 'admin' AND is_active = 1"
+    ) as cur:
+        admin_count = (await cur.fetchone())[0]
+    if admin_count > 0:
+        return
+
+    email = (os.environ.get("INITIAL_ADMIN_EMAIL") or "").strip().lower()
+    if not email:
+        logger.warning(
+            "No active admin users in app_users and INITIAL_ADMIN_EMAIL is unset. "
+            "Google Sign-In will reject every login until an admin is seeded."
+        )
+        return
+
+    full_name = (os.environ.get("INITIAL_ADMIN_NAME") or "Administrator").strip() or "Administrator"
+    now = datetime.now(timezone.utc).isoformat()
+
+    async with db.execute(
+        "SELECT id, role, is_active FROM app_users WHERE email = ? COLLATE NOCASE",
+        (email,),
+    ) as cur:
+        existing = await cur.fetchone()
+    if existing:
+        await db.execute(
+            "UPDATE app_users SET role = 'admin', is_active = 1, updated_at = ? WHERE id = ?",
+            (now, existing[0]),
+        )
+        logger.info("Promoted existing app_users row '%s' to active admin.", email)
+        return
+
+    await db.execute(
+        """INSERT INTO app_users (email, full_name, role, is_active, created_at, updated_at)
+           VALUES (?, ?, 'admin', 1, ?, ?)""",
+        (email, full_name, now, now),
+    )
+    logger.info("Seeded initial admin app_user '%s'.", email)
 
 
 async def _migrate_app_settings_table(db: aiosqlite.Connection) -> None:

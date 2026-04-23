@@ -14,6 +14,7 @@ import com.insurance.mobile.ui.components.InsuranceFullScreenLoading
 fun StartupScreen(
     onNavigateToMain: () -> Unit,
     onNavigateToServerSetup: () -> Unit,
+    onNavigateToLogin: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: StartupViewModel = hiltViewModel(),
 ) {
@@ -21,6 +22,7 @@ fun StartupScreen(
         when (viewModel.resolveDestination()) {
             StartupDestination.Main -> onNavigateToMain()
             StartupDestination.ServerSetup -> onNavigateToServerSetup()
+            StartupDestination.Login -> onNavigateToLogin()
         }
     }
 
