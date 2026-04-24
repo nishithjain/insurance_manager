@@ -50,13 +50,10 @@ fun buildWhatsAppRenewalMessage(
         ?: context.getString(R.string.renewal_window_whatsapp_name_fallback)
     val type = item.policyType?.trim().takeUnless { it.isNullOrEmpty() }
         ?: context.getString(R.string.renewal_window_whatsapp_placeholder)
-    val policyNo = item.policyNumber?.trim().takeUnless { it.isNullOrEmpty() }
-        ?: context.getString(R.string.renewal_window_whatsapp_placeholder)
     return context.getString(
         R.string.renewal_window_whatsapp_message_template,
         name,
-        type,
-        policyNo,
+        type.lowercase(),
         expiryFormatted,
     )
 }

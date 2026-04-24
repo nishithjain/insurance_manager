@@ -8,6 +8,8 @@ requests
 python-dotenv
 python-multipart
 uvicorn[standard]
+pywin32
+pyinstaller
 
 # Test dependencies
 httpx

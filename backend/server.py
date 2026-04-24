@@ -13,11 +13,13 @@ from __future__ import annotations
 
 import logging
 import os
+import json
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 from dotenv import load_dotenv
-from fastapi import APIRouter, Depends, FastAPI
+from fastapi import APIRouter, Depends, FastAPI, HTTPException
+from fastapi.responses import FileResponse
 from starlette.middleware.cors import CORSMiddleware
 
 from database import init_db
@@ -36,6 +38,8 @@ from routers import (
 
 
 ROOT_DIR = Path(__file__).parent
+APP_DIR = ROOT_DIR.parent
+SERVICE_CONFIG_PATH = APP_DIR / "backend_service_config.json"
 # ``override=True`` ensures local ``backend/.env`` values win over inherited
 # empty/system env vars (common on Windows shells), avoiding false
 # "Authentication is not configured" errors.
@@ -47,6 +51,40 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
+
+
+def _service_config() -> dict:
+    """Read optional installer/service config without making dev startup depend on it."""
+    if not SERVICE_CONFIG_PATH.exists():
+        return {}
+    try:
+        with SERVICE_CONFIG_PATH.open("r", encoding="utf-8") as config_file:
+            return json.load(config_file)
+    except Exception as exc:
+        logger.warning("Could not read %s: %s", SERVICE_CONFIG_PATH, exc)
+        return {}
+
+
+def _resolve_frontend_dist() -> Path | None:
+    """Resolve the production frontend folder for installed service mode."""
+    config = _service_config()
+    if config.get("frontend_enabled", True) is False:
+        logger.info("Frontend static serving is disabled by config.")
+        return None
+
+    raw_path = (
+        os.environ.get("FRONTEND_DIST_PATH")
+        or config.get("frontend_dist_path")
+        or "frontend_dist"
+    )
+    frontend_path = Path(str(raw_path))
+    if not frontend_path.is_absolute():
+        frontend_path = APP_DIR / frontend_path
+    return frontend_path.resolve()
+
+
+FRONTEND_DIST = _resolve_frontend_dist()
+FRONTEND_INDEX = FRONTEND_DIST / "index.html" if FRONTEND_DIST else None
 
 
 @asynccontextmanager
@@ -65,7 +103,9 @@ app = FastAPI(lifespan=lifespan)
 
 @app.get("/")
 async def site_root():
-    """So opening http://host:port/ in a browser is not a 404; API lives under /api."""
+    """Open the installed React UI when present; otherwise show the API landing."""
+    if FRONTEND_INDEX and FRONTEND_INDEX.exists():
+        return FileResponse(FRONTEND_INDEX)
     return {
         "message": "Insurance App API",
         "api_base": "/api/",
@@ -117,3 +157,28 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+if FRONTEND_DIST and FRONTEND_INDEX and FRONTEND_INDEX.exists():
+    logger.info("Serving frontend static files from %s", FRONTEND_DIST)
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def serve_frontend(full_path: str):
+        """Serve built React files and fall back to index.html for SPA routes."""
+        if full_path.startswith(("api/", "docs", "redoc", "openapi.json")):
+            raise HTTPException(status_code=404)
+
+        requested_path = (FRONTEND_DIST / full_path).resolve()
+        try:
+            requested_path.relative_to(FRONTEND_DIST)
+        except ValueError:
+            raise HTTPException(status_code=404) from None
+
+        if requested_path.is_file():
+            return FileResponse(requested_path)
+        return FileResponse(FRONTEND_INDEX)
+else:
+    logger.warning(
+        "Frontend build not found; API-only mode. Expected index at %s",
+        FRONTEND_INDEX,
+    )

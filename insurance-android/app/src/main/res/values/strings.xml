@@ -58,7 +58,7 @@
     <string name="renewal_window_field_expiry">Expires</string>
     <string name="renewal_window_action_call">Call</string>
     <string name="renewal_window_action_whatsapp">WhatsApp</string>
-    <string name="renewal_window_whatsapp_message_template">Hi %1$s, your %2$s policy (Policy No: %3$s) is expiring on %4$s. Please renew it on time. Kindly contact us for assistance.</string>
+    <string name="renewal_window_whatsapp_message_template">Hi %1$s, your %2$s policy is expiring on %3$s. Please renew it on time. Kindly contact Sandesh (9886065565) or Samraj (9886120280) for renewal assistance.</string>
     <string name="renewal_window_whatsapp_name_fallback">Customer</string>
     <string name="renewal_window_whatsapp_placeholder">—</string>
     <string name="renewal_window_whatsapp_unavailable">WhatsApp not installed</string>
