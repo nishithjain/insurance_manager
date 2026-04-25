@@ -1,9 +1,10 @@
 @echo off
 setlocal
-cd /d "%~dp0"
+set "REPO_ROOT=%~dp0..\.."
+pushd "%REPO_ROOT%"
 
 if not exist ".venv\Scripts\python.exe" (
-  echo No .venv found. Run recreate_venv.bat from the repo root first.
+  echo No .venv found. Run scripts\windows\recreate_venv.bat from the repo root first.
   exit /b 1
 )
 
@@ -18,6 +19,7 @@ python -m PyInstaller ^
   --clean ^
   --onefile ^
   --name InsuranceBackendService ^
+  --icon "installer\InsuranceManager.ico" ^
   --distpath "dist\InsuranceBackendService" ^
   --workpath "build\InsuranceBackendService" ^
   --specpath "build" ^
@@ -34,7 +36,8 @@ python -m PyInstaller ^
   --collect-submodules uvicorn ^
   --collect-submodules httptools ^
   --collect-submodules websockets ^
-  windows_service.py
+  scripts\windows\windows_service.py
 
 if errorlevel 1 exit /b 1
 echo Built dist\InsuranceBackendService\InsuranceBackendService.exe
+popd

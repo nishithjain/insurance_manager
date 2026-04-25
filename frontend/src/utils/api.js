@@ -132,6 +132,11 @@ export const syncAPI = {
   getStatus: () => api.get('/sync/status'),
 };
 
+export const settingsAPI = {
+  get: () => api.get('/settings'),
+  update: (data) => api.put('/settings', data),
+};
+
 /** Promote CSV statement rows (statement_policy_lines) into customers + policies */
 export const importAPI = {
   statementSummary: () => api.get('/import/statement-lines/summary'),

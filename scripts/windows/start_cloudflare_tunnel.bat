@@ -1,5 +1,7 @@
 @echo off
 setlocal
+set "REPO_ROOT=%~dp0..\.."
+pushd "%REPO_ROOT%"
 title Insurance Manager Cloudflare Tunnel
 
 where cloudflared.exe >nul 2>&1
@@ -26,3 +28,4 @@ cloudflared tunnel --url http://localhost:8000
 echo.
 echo Tunnel stopped.
 pause
+popd

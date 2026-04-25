@@ -31,6 +31,7 @@ from routers import (
     exports,
     policies,
     renewals,
+    settings,
     statements,
     sync,
     system,
@@ -39,7 +40,7 @@ from routers import (
 
 ROOT_DIR = Path(__file__).parent
 APP_DIR = ROOT_DIR.parent
-SERVICE_CONFIG_PATH = APP_DIR / "backend_service_config.json"
+SERVICE_CONFIG_PATH = APP_DIR / "config" / "backend_service_config.json"
 # ``override=True`` ensures local ``backend/.env`` values win over inherited
 # empty/system env vars (common on Windows shells), avoiding false
 # "Authentication is not configured" errors.
@@ -129,6 +130,7 @@ api_protected = APIRouter(prefix="/api", dependencies=[Depends(get_current_princ
 api_protected.include_router(customers.router)
 api_protected.include_router(policies.router)
 api_protected.include_router(renewals.router)
+api_protected.include_router(settings.router)
 api_protected.include_router(statements.router)
 api_protected.include_router(exports.router)
 api_protected.include_router(sync.router)

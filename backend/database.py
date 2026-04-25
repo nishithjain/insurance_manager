@@ -5,10 +5,52 @@ import tempfile
 from pathlib import Path
 from datetime import datetime, timezone
 import logging
+import re
 
 from db_path import DB_PATH
+from services.database_backup import DatabaseBackupService
 
 logger = logging.getLogger(__name__)
+
+_WRITE_SQL_RE = re.compile(
+    r"^\s*(?:--[^\n]*\n\s*)*(INSERT|UPDATE|DELETE|REPLACE|CREATE|DROP|ALTER|VACUUM)\b",
+    re.IGNORECASE,
+)
+
+
+class BackupAioSqliteConnection:
+    """Thin proxy that runs one configured DB backup before the first write."""
+
+    def __init__(self, db: aiosqlite.Connection) -> None:
+        self._db = db
+        self._backup_service = DatabaseBackupService()
+        self._backup_checked = False
+
+    def __getattr__(self, name: str):
+        return getattr(self._db, name)
+
+    def _is_write_sql(self, sql: str) -> bool:
+        return bool(_WRITE_SQL_RE.match(sql or ""))
+
+    async def _backup_before_write_once(self, sql: str) -> None:
+        if self._backup_checked or not self._is_write_sql(sql):
+            return
+        self._backup_service.backup_before_write()
+        self._backup_checked = True
+
+    async def execute(self, sql: str, parameters=None):
+        await self._backup_before_write_once(sql)
+        if parameters is None:
+            return await self._db.execute(sql)
+        return await self._db.execute(sql, parameters)
+
+    async def executemany(self, sql: str, parameters):
+        await self._backup_before_write_once(sql)
+        return await self._db.executemany(sql, parameters)
+
+    async def executescript(self, sql_script: str):
+        await self._backup_before_write_once(sql_script)
+        return await self._db.executescript(sql_script)
 
 
 # Full schema (normalized policies + per-type detail tables). Multi-tenant via customers.user_id.
@@ -499,6 +541,7 @@ async def init_db():
     """Create schema and seed reference data."""
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
+        DatabaseBackupService().backup_before_write()
         await db.executescript(SCHEMA_SQL)
         await _migrate_legacy_columns(db)
         await _seed_reference_data(db)
@@ -510,7 +553,7 @@ async def get_db():
     db = await aiosqlite.connect(DB_PATH)
     db.row_factory = aiosqlite.Row
     await db.execute("PRAGMA foreign_keys = ON")
-    return db
+    return BackupAioSqliteConnection(db)
 
 
 def export_user_insurance_sqlite_bytes(user_id: str) -> bytes:

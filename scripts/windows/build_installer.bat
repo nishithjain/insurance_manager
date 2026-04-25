@@ -1,11 +1,12 @@
 @echo off
 setlocal
-cd /d "%~dp0"
+set "REPO_ROOT=%~dp0..\.."
+pushd "%REPO_ROOT%"
 
-call build_service_exe.bat
+call "%~dp0build_service_exe.bat"
 if errorlevel 1 exit /b 1
 
-call build_frontend.bat
+call "%~dp0build_frontend.bat"
 if errorlevel 1 exit /b 1
 
 set "ISCC="
@@ -24,3 +25,4 @@ if not defined ISCC (
 "%ISCC%" "installer\InsuranceManagerBackend.iss"
 if errorlevel 1 exit /b 1
 echo Built installer_output\InsuranceManagerBackendSetup.exe
+popd

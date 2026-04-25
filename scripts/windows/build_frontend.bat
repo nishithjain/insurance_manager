@@ -1,6 +1,7 @@
 @echo off
 setlocal
-cd /d "%~dp0"
+set "REPO_ROOT=%~dp0..\.."
+pushd "%REPO_ROOT%"
 
 if not exist "frontend\package.json" (
   echo Missing frontend\package.json.
@@ -36,3 +37,4 @@ xcopy "frontend\build\*" "installer_staging\frontend_dist\" /E /I /Y
 if errorlevel 1 exit /b 1
 
 echo Built frontend and staged it at installer_staging\frontend_dist
+popd

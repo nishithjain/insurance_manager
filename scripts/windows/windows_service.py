@@ -29,12 +29,15 @@ def get_app_dir() -> Path:
         if exe_dir.name.lower() == "runtime":
             return exe_dir.parent
         return exe_dir
-    return Path(__file__).resolve().parent
+    script_dir = Path(__file__).resolve().parent
+    if script_dir.name.lower() == "windows" and script_dir.parent.name.lower() == "scripts":
+        return script_dir.parent.parent
+    return script_dir
 
 
 APP_DIR = get_app_dir()
 BACKEND_DIR = APP_DIR / "backend"
-CONFIG_PATH = APP_DIR / "backend_service_config.json"
+CONFIG_PATH = APP_DIR / "config" / "backend_service_config.json"
 LOG_DIR = APP_DIR / "logs"
 LOG_FILE = LOG_DIR / "backend_service.log"
 
@@ -133,7 +136,7 @@ class InsuranceBackendService(win32serviceutil.ServiceFramework):
     def _run_service(self) -> None:
         config = load_config()
 
-        # Make imports like "server:app" resolve exactly as they do in run_backend.bat.
+        # Make imports like "server:app" resolve exactly as they do in scripts/windows/run_backend.bat.
         os.chdir(BACKEND_DIR)
         sys.path.insert(0, str(BACKEND_DIR))
 

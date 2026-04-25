@@ -10,6 +10,7 @@ import sqlite3
 import sys
 
 from db_path import DB_PATH
+from services.database_backup import backup_database_before_write
 
 TABLES = [
     "motor_policy_details",
@@ -31,6 +32,7 @@ def main() -> None:
     if not DB_PATH.is_file():
         print(f"No database at {DB_PATH}", file=sys.stderr)
         sys.exit(1)
+    backup_database_before_write()
     conn = sqlite3.connect(str(DB_PATH))
     try:
         conn.execute("PRAGMA foreign_keys = OFF")

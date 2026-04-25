@@ -1,6 +1,7 @@
 @echo off
 setlocal
-cd /d "%~dp0"
+set "REPO_ROOT=%~dp0..\.."
+pushd "%REPO_ROOT%"
 
 REM Stale PYTHONHOME (e.g. from old BMC) makes venv copy launchers from the wrong install — clear it.
 set "PYTHONHOME="
@@ -39,4 +40,5 @@ if errorlevel 1 exit /b 1
 call .venv\Scripts\activate.bat
 python -m pip install --upgrade pip
 if exist backend\requirements.txt pip install -r backend\requirements.txt
-echo OK: run run_backend.bat to start the API
+echo OK: run scripts\windows\run_backend.bat to start the API
+popd
