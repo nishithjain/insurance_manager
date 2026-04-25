@@ -100,7 +100,7 @@ const PendingPaymentsSection = ({ policies, customers, onRefresh }) => {
               <Label htmlFor="pending-pay-search">Search</Label>
               <Input
                 id="pending-pay-search"
-                placeholder="Customer name, policy number, phone…"
+                placeholder="Customer name, insurance type, policy type, phone…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -131,8 +131,8 @@ const PendingPaymentsSection = ({ policies, customers, onRefresh }) => {
                 <TableHeader>
                   <TableRow className="bg-muted/50">
                     <TableHead>Customer</TableHead>
+                    <TableHead>Insurance type</TableHead>
                     <TableHead>Policy type</TableHead>
-                    <TableHead>Policy number</TableHead>
                     <TableHead>Phone</TableHead>
                     <TableHead className="text-right">Premium</TableHead>
                     <TableHead>Payment status</TableHead>
@@ -168,8 +168,8 @@ const PendingPaymentsSection = ({ policies, customers, onRefresh }) => {
                         }
                       >
                         <TableCell className="font-medium">{row.customerName}</TableCell>
-                        <TableCell>{row.policy.policy_type || '—'}</TableCell>
-                        <TableCell className="font-mono text-sm">{row.policy.policy_number || '—'}</TableCell>
+                        <TableCell>{row.policy.insurance_type_name || '—'}</TableCell>
+                        <TableCell>{row.policy.policy_type_name || row.policy.policy_type || '—'}</TableCell>
                         <TableCell className="text-sm">{row.phone || '—'}</TableCell>
                         <TableCell className="text-right tabular-nums">{premStr}</TableCell>
                         <TableCell>
