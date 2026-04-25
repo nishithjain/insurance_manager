@@ -11,7 +11,6 @@ POST /api/import/statement-lines with your session.
 Usage (from backend/):
   import_statements.bat
   import_statements.bat "..\\MARCH STATEMENTS 2026.csv"
-  ./import_statements.sh "../MARCH STATEMENTS 2026.csv"
 
 If you see ``No module named 'encodings'``, your shell set PYTHONHOME (e.g. from BMC Python).
 Either run the wrappers above, or: ``unset PYTHONHOME`` in Git Bash, then use
@@ -29,6 +28,7 @@ from pathlib import Path
 
 from statement_parse import split_name_address
 from db_path import DB_PATH
+from services.database_backup import backup_database_before_write
 
 
 def _resolve_csv_path(arg: str) -> Path:
@@ -205,6 +205,7 @@ def _save_statement_rows(
     replace_source: bool,
 ) -> int:
     """Row tuples end with source_file, imported_at."""
+    backup_database_before_write()
     conn = sqlite3.connect(str(DB_PATH))
     try:
         table_cols = _ensure_statement_table(conn)

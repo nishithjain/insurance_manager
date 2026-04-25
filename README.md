@@ -84,6 +84,22 @@ yarn start
 # Open insurance-android/ in Android Studio and run the `app` configuration.
 ```
 
+Windows helper scripts live under `scripts/windows/` (for example
+`scripts/windows/recreate_venv.bat`, `scripts/windows/run_backend.bat`, and
+`scripts/windows/build_installer.bat`).
+
+## SQLite backups
+
+The backend can keep two rolling SQLite-safe backups of `insurance.db`:
+
+- `insurance_pre_modify_backup.db` is replaced before the first database write in a request or import script.
+- `insurance_daily_backup.db` is replaced at most once per calendar day, also before a write.
+
+Configure the backup folder in the web app under **Settings**. The path is a server-side folder path,
+stored in the `app_settings` table under `database_backup_folder`. Leave it blank to disable backups.
+When a path is configured, the backend creates the folder if it does not already exist. Backup failures
+are logged and do not block the normal business operation.
+
 ## Tests
 
 ```bash

@@ -1,6 +1,14 @@
 // craco.config.js
 const path = require("path");
-require("dotenv").config();
+const dotenv = require("dotenv");
+
+// Load environment files in a production-friendly order for Craco itself.
+// CRA also loads these, but this file reads ENABLE_HEALTH_CHECK before CRA's
+// env handling runs. In production, .env.production should override .env.
+if (process.env.NODE_ENV) {
+  dotenv.config({ path: `.env.${process.env.NODE_ENV}`, override: true });
+}
+dotenv.config();
 
 // Environment variable overrides
 const config = {

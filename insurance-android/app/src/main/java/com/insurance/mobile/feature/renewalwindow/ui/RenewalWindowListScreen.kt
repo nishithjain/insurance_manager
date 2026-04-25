@@ -49,7 +49,7 @@ import com.insurance.mobile.ui.components.ExpiryStatusBadge
 import com.insurance.mobile.ui.components.InsuranceFullScreenLoading
 import com.insurance.mobile.ui.components.InsuranceTopBar
 import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -165,7 +165,7 @@ private fun ExpiringWindowPolicyCard(
     onPolicyClick: () -> Unit,
 ) {
     val context = LocalContext.current
-    val dateFmt = remember { DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM) }
+    val dateFmt = remember { DateTimeFormatter.ofPattern("d MMMM uuuu", Locale.ENGLISH) }
     val expiryLabel = remember(item.endDate) {
         val d = parsePolicyEndDate(item.endDate)
         if (d != null) dateFmt.format(d) else (item.endDate ?: "—")

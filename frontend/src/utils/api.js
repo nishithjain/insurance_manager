@@ -1,5 +1,9 @@
 import axios from 'axios';
 
+function localDevBackendOrigin() {
+  return ['http://127.0.0.1', '8000'].join(':');
+}
+
 /**
  * Resolve FastAPI origin. Preview hosts (e.g. *.emergentagent.com) often serve **no** Python API.
  * When the UI runs on localhost, prefer local FastAPI unless REACT_APP_ALLOW_PREVIEW_API=true.
@@ -10,6 +14,10 @@ function resolveBackendOrigin() {
     raw != null && String(raw).trim() !== '' ? String(raw).replace(/\/$/, '') : '';
 
   if (typeof window === 'undefined') {
+    return base;
+  }
+
+  if (process.env.NODE_ENV === 'production') {
     return base;
   }
 
@@ -26,7 +34,7 @@ function resolveBackendOrigin() {
     /preview\./i.test(base);
 
   if (pointsAtPreview || !base) {
-    return 'http://127.0.0.1:8000';
+    return localDevBackendOrigin();
   }
 
   return base;
@@ -122,6 +130,11 @@ export const policyAPI = {
 // Sync APIs (local sync_info history only; no cloud upload)
 export const syncAPI = {
   getStatus: () => api.get('/sync/status'),
+};
+
+export const settingsAPI = {
+  get: () => api.get('/settings'),
+  update: (data) => api.put('/settings', data),
 };
 
 /** Promote CSV statement rows (statement_policy_lines) into customers + policies */

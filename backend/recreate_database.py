@@ -14,10 +14,12 @@ import sys
 
 from db_path import DB_PATH
 from database import init_db
+from services.database_backup import backup_database_before_write
 
 
 def main() -> None:
     if DB_PATH.is_file():
+        backup_database_before_write()
         try:
             os.unlink(DB_PATH)
         except OSError as e:

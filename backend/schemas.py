@@ -189,6 +189,16 @@ class StatementCsvUploadOut(BaseModel):
     materialize: Optional[StatementImportStats] = None
 
 
+# ============= APP SETTINGS =============
+
+class AppSettings(BaseModel):
+    database_backup_folder: Optional[str] = None
+
+
+class AppSettingsUpdate(BaseModel):
+    database_backup_folder: Optional[str] = None
+
+
 # ============= RENEWAL HISTORY =============
 
 class RenewalHistory(BaseModel):

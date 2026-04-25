@@ -10,7 +10,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { importAPI } from '@/utils/api';
-import { ArrowLeft, FileText } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 
 const Statements = () => {
   const [rows, setRows] = useState([]);
@@ -56,7 +56,7 @@ const Statements = () => {
                 </Button>
               </Link>
               <div className="flex items-center gap-2">
-                <FileText className="w-6 h-6 text-indigo-600" />
+                <img src="/InsuranceManager.png" alt="" className="w-8 h-8 rounded-md object-cover" />
                 <div>
                   <h1 className="text-lg font-semibold text-gray-900">Statement CSV import</h1>
                   <p className="text-sm text-gray-500">

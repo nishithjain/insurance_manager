@@ -1,6 +1,5 @@
 import React, { useCallback, useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { Shield } from 'lucide-react';
 import { useAuth } from '@/auth/AuthContext';
 import GoogleSignInButton from '@/auth/GoogleSignInButton';
 
@@ -44,11 +43,9 @@ export default function Login() {
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-indigo-100 flex items-center justify-center px-4">
       <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white shadow-xl p-8">
         <div className="flex items-center gap-3 mb-6">
-          <div className="h-11 w-11 rounded-xl bg-indigo-600 text-white flex items-center justify-center">
-            <Shield className="h-6 w-6" />
-          </div>
+          <img src="/InsuranceManager.png" alt="" className="h-11 w-11 rounded-xl object-cover shadow-sm" />
           <div>
-            <h1 className="text-xl font-semibold text-gray-900">Insurance Admin</h1>
+            <h1 className="text-xl font-semibold text-gray-900">Insurance Manager</h1>
             <p className="text-sm text-gray-500">Sign in to continue</p>
           </div>
         </div>
