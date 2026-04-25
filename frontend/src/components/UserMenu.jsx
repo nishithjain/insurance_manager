@@ -33,10 +33,15 @@ export default function UserMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-2" data-testid="user-menu-btn">
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-9 shrink-0 gap-2 rounded-xl border-[#E5E7EB] bg-white px-2.5 text-xs font-semibold text-[#334155] shadow-none transition-all duration-150 hover:bg-[#F8FAFC] active:scale-95"
+          data-testid="user-menu-btn"
+        >
           <span
             aria-hidden
-            className="w-6 h-6 rounded-full bg-indigo-600 text-white text-xs font-semibold flex items-center justify-center"
+            className="flex h-6 w-6 items-center justify-center rounded-full bg-[#2563EB] text-xs font-semibold text-white"
           >
             {initial}
           </span>

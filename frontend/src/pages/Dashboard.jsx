@@ -89,7 +89,7 @@ const Dashboard = () => {
     syncStatus.status !== 'never_synced';
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#F8FAFC] text-[#0F172A]">
       <DailyReminderDialog
         open={dailyReminder.open}
         onOpenChange={dailyReminder.onOpenChange}
@@ -100,9 +100,12 @@ const Dashboard = () => {
 
       <DashboardHeader />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="mx-auto max-w-7xl px-[14px] py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
         {showSyncBanner && (
-          <Alert className="mb-6" data-testid="sync-status">
+          <Alert
+            className="mb-3 rounded-2xl border-[#E5E7EB] bg-white shadow-[0_2px_8px_rgba(15,23,42,0.06)] sm:mb-4"
+            data-testid="sync-status"
+          >
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
               Last sync:{' '}
@@ -143,7 +146,7 @@ const Dashboard = () => {
           onFollowUpDateChange={handleFollowUpDateChange}
         />
 
-        <div className="grid grid-cols-1 gap-6">
+        <div className="grid grid-cols-1 gap-3 sm:gap-4">
           <RecentPoliciesCard
             policies={policies}
             customers={customers}

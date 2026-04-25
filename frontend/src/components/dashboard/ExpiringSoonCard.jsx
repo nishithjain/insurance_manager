@@ -37,11 +37,11 @@ import {
 import { expiryRowContactClass, expiryRowUrgencyClass } from '@/utils/expiryStyles';
 
 const TYPE_BADGE_BASE =
-  'inline-flex items-center rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-800';
+  'inline-flex items-center rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-xs font-medium text-[#5B21B6]';
 
-const CHIP_BASE = 'h-8 rounded-full border px-3 text-xs font-medium transition-colors';
-const CHIP_ACTIVE = 'border-indigo-600 bg-indigo-600 text-white';
-const CHIP_IDLE = 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50';
+const CHIP_BASE = 'h-8 rounded-full border px-3 text-xs font-medium transition-all duration-150 active:scale-[0.98]';
+const CHIP_ACTIVE = 'border-[#2563EB] bg-[#2563EB] text-white';
+const CHIP_IDLE = 'border-[#E5E7EB] bg-white text-[#334155] hover:bg-[#F8FAFC]';
 
 /**
  * Counts + filter chips + expiry table — the "Expiring Soon" section.
@@ -63,57 +63,60 @@ const ExpiringSoonCard = ({
   onContactStatusChange,
   onFollowUpDateChange,
 }) => (
-  <Card className="mb-8 shadow-sm" data-testid="expiring-soon-section">
-    <CardHeader>
-      <CardTitle>Expiring Soon</CardTitle>
-      <CardDescription>
+  <Card
+    className="mb-3 rounded-2xl border border-[#E5E7EB] bg-gradient-to-br from-[#F5F3FF] to-[#EDE9FE] text-[#5B21B6] shadow-[0_2px_8px_rgba(15,23,42,0.06)] sm:mb-4"
+    data-testid="expiring-soon-section"
+  >
+    <CardHeader className="p-4 pb-2 sm:p-5 sm:pb-2">
+      <CardTitle className="text-base font-bold sm:text-lg">Expiring Soon</CardTitle>
+      <CardDescription className="text-xs leading-relaxed text-[#64748B] sm:text-sm">
         Policies expiring in the next 7, 15, or 30 days (counts are cumulative — &quot;15 days&quot;
         includes all due on or before that window).
       </CardDescription>
     </CardHeader>
-    <CardContent className="space-y-8">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <CardContent className="space-y-4 p-4 pt-2 sm:p-5 sm:pt-3">
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
         <div
-          className="rounded-xl border-2 border-red-200 bg-red-50/90 px-4 py-4 text-center shadow-sm"
+          className="rounded-xl border border-red-200/70 bg-white/70 px-2 py-3 text-center shadow-[0_2px_8px_rgba(15,23,42,0.04)]"
           data-testid="expiring-7d-count"
         >
-          <p className="text-sm font-medium text-red-900/90">Expiring in 7 days</p>
-          <p className="mt-2 text-3xl font-bold tabular-nums text-red-800">
+          <p className="text-[11px] font-medium leading-tight text-[#64748B] sm:text-sm">7 days</p>
+          <p className="mt-1 text-[22px] font-bold leading-tight tabular-nums text-[#DC2626] sm:text-[26px]">
             {expiringCounts.d7} <span aria-hidden="true">🔴</span>
           </p>
         </div>
         <div
-          className="rounded-xl border-2 border-orange-200 bg-orange-50/90 px-4 py-4 text-center shadow-sm"
+          className="rounded-xl border border-orange-200/70 bg-white/70 px-2 py-3 text-center shadow-[0_2px_8px_rgba(15,23,42,0.04)]"
           data-testid="expiring-15d-count"
         >
-          <p className="text-sm font-medium text-orange-900/90">Expiring in 15 days</p>
-          <p className="mt-2 text-3xl font-bold tabular-nums text-orange-900">
+          <p className="text-[11px] font-medium leading-tight text-[#64748B] sm:text-sm">15 days</p>
+          <p className="mt-1 text-[22px] font-bold leading-tight tabular-nums text-[#F59E0B] sm:text-[26px]">
             {expiringCounts.d15} <span aria-hidden="true">🟠</span>
           </p>
         </div>
         <div
-          className="rounded-xl border-2 border-yellow-200 bg-yellow-50/90 px-4 py-4 text-center shadow-sm"
+          className="rounded-xl border border-yellow-200/70 bg-white/70 px-2 py-3 text-center shadow-[0_2px_8px_rgba(15,23,42,0.04)]"
           data-testid="expiring-30d-count"
         >
-          <p className="text-sm font-medium text-yellow-900/90">Expiring in 30 days</p>
-          <p className="mt-2 text-3xl font-bold tabular-nums text-yellow-900">
+          <p className="text-[11px] font-medium leading-tight text-[#64748B] sm:text-sm">30 days</p>
+          <p className="mt-1 text-[22px] font-bold leading-tight tabular-nums text-[#5B21B6] sm:text-[26px]">
             {expiringCounts.d30} <span aria-hidden="true">🟡</span>
           </p>
         </div>
       </div>
 
       <div>
-        <h3 className="text-sm font-semibold text-gray-900 mb-1">Expiry list</h3>
-        <p className="text-xs text-gray-500 mb-3">
+        <h3 className="mb-1 text-sm font-semibold text-[#0F172A]">Expiry list</h3>
+        <p className="mb-3 text-xs text-[#64748B]">
           🔴 under 7 days · 🟠 under 15 days · 🟡 15–30 days · status tracks renewal outreach
         </p>
         <div className="flex flex-wrap items-end gap-3 mb-3">
           <div className="space-y-1">
-            <Label htmlFor="expiry-contact-filter" className="text-xs text-gray-600">
+            <Label htmlFor="expiry-contact-filter" className="text-xs font-medium text-[#64748B]">
               Contact filter
             </Label>
             <Select value={contactFilter} onValueChange={onContactFilterChange}>
-              <SelectTrigger id="expiry-contact-filter" className="w-[220px] h-9">
+              <SelectTrigger id="expiry-contact-filter" className="h-9 w-[220px] rounded-xl border-[#E5E7EB] bg-white">
                 <SelectValue placeholder="All" />
               </SelectTrigger>
               <SelectContent>
@@ -125,7 +128,7 @@ const ExpiringSoonCard = ({
             </Select>
           </div>
           <div className="space-y-1">
-            <Label className="text-xs text-gray-600">Insurance type</Label>
+            <Label className="text-xs font-medium text-[#64748B]">Insurance type</Label>
             <div className="flex flex-wrap gap-1.5">
               <button
                 type="button"
@@ -150,18 +153,18 @@ const ExpiringSoonCard = ({
           </div>
         </div>
         {expiringSoonRows.length === 0 ? (
-          <p className="text-sm text-gray-500 py-6 text-center border rounded-lg bg-gray-50/80">
+          <p className="rounded-xl border border-[#E5E7EB] bg-white/70 py-6 text-center text-sm text-[#64748B]">
             No active policies expiring in the next 30 days.
           </p>
         ) : filteredExpiringSoonRows.length === 0 ? (
-          <p className="text-sm text-amber-900 py-6 text-center border border-amber-200 rounded-lg bg-amber-50/80">
+          <p className="rounded-xl border border-amber-200 bg-amber-50/80 py-6 text-center text-sm text-amber-900">
             No policies match this contact filter.
           </p>
         ) : (
-          <div className="rounded-lg border bg-white overflow-hidden">
+          <div className="overflow-hidden rounded-xl border border-[#E5E7EB] bg-white">
             <Table>
               <TableHeader>
-                <TableRow className="bg-gray-50/80">
+                <TableRow className="bg-[#F8FAFC]">
                   <TableHead className="min-w-[120px]">Customer</TableHead>
                   <TableHead className="min-w-[120px]">Insurance type</TableHead>
                   <TableHead>Policy type</TableHead>

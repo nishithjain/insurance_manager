@@ -154,11 +154,11 @@ private fun DashboardHeader(
         modifier = modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f),
+            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.22f),
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
-        Column(Modifier.padding(18.dp)) {
+        Column(Modifier.padding(14.dp)) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -167,7 +167,7 @@ private fun DashboardHeader(
                     painter = painterResource(R.drawable.insurance_manager),
                     contentDescription = null,
                     modifier = Modifier
-                        .size(46.dp)
+                        .size(40.dp)
                         .clip(MaterialTheme.shapes.medium),
                 )
                 Column(modifier = Modifier.weight(1f)) {
@@ -189,7 +189,7 @@ private fun DashboardHeader(
                 text = stringResource(R.string.dashboard_as_of, asOfDate),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f),
-                modifier = Modifier.padding(top = 10.dp),
+                modifier = Modifier.padding(top = 8.dp),
             )
         }
     }
@@ -206,19 +206,19 @@ private fun PendingPaymentsHighlightCard(
         modifier = modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(
-            containerColor = extended.warningContainer.copy(alpha = 0.92f),
+            containerColor = extended.warningContainer.copy(alpha = 0.45f),
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
         Row(
-            Modifier.padding(18.dp),
+            Modifier.padding(14.dp),
             verticalAlignment = Alignment.Top,
             horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Icon(
                 imageVector = Icons.Outlined.Payments,
                 contentDescription = null,
-                modifier = Modifier.size(28.dp),
+                modifier = Modifier.size(24.dp),
                 tint = extended.onWarningContainer,
             )
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -262,8 +262,8 @@ private fun DashboardBody(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         DashboardHeader(
             displayName = displayName,
@@ -273,7 +273,7 @@ private fun DashboardBody(
 
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             DashboardMetricTile(
                 title = stringResource(R.string.metric_total_customers),
@@ -299,7 +299,7 @@ private fun DashboardBody(
             value = nf.format(overview.renewalSummary.expiringWithin365Days),
             subtitle = stringResource(R.string.metric_expiring_soon_subtitle),
             icon = Icons.Outlined.CalendarMonth,
-            containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.35f),
+            containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.18f),
             iconTint = MaterialTheme.colorScheme.tertiary,
         )
 
@@ -323,7 +323,7 @@ private fun RenewalSummaryRows(
     val nf = NumberFormat.getNumberInstance(Locale.getDefault())
     val today = s.expiringToday ?: 0
 
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         RenewalSummaryClickableRow(
             label = stringResource(R.string.renewal_expiring_today),
             value = nf.format(today),
@@ -372,10 +372,10 @@ private fun RenewalSummaryClickableRow(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f),
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
         Row(
-            Modifier.padding(14.dp),
+            Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
