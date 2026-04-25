@@ -10,6 +10,14 @@ from this top-level module so callers can keep doing
 
 from __future__ import annotations
 
+from .admin_taxonomy import (
+    InsuranceTypeAdminOut,
+    InsuranceTypeCreate,
+    InsuranceTypeUpdate,
+    PolicyTypeAdminOut,
+    PolicyTypeCreate,
+    PolicyTypeUpdate,
+)
 from .auth import (
     AppUser,
     AppUserCreate,
@@ -45,6 +53,13 @@ from .statements import (
 from .user import User
 
 __all__ = [
+    # admin taxonomy (Insurance Master CRUD)
+    "InsuranceTypeAdminOut",
+    "InsuranceTypeCreate",
+    "InsuranceTypeUpdate",
+    "PolicyTypeAdminOut",
+    "PolicyTypeCreate",
+    "PolicyTypeUpdate",
     # auth
     "AppUser",
     "AppUserCreate",

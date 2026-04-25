@@ -9,6 +9,7 @@ import Statistics from '@/pages/Statistics';
 import Login from '@/pages/Login';
 import UserManagement from '@/pages/UserManagement';
 import CustomerManagement from '@/pages/CustomerManagement';
+import InsuranceMaster from '@/pages/InsuranceMaster';
 import { AuthProvider } from '@/auth/AuthContext';
 import ProtectedRoute from '@/auth/ProtectedRoute';
 import '@/App.css';
@@ -83,6 +84,14 @@ function AppRouter() {
         element={
           <ProtectedRoute requireAdmin>
             <CustomerManagement />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/insurance-master"
+        element={
+          <ProtectedRoute requireAdmin>
+            <InsuranceMaster />
           </ProtectedRoute>
         }
       />

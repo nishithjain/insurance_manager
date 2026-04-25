@@ -31,7 +31,27 @@ async def apply_migrations(db: aiosqlite.Connection) -> None:
     await _migrate_policy_payment_columns(db)
     await _migrate_payment_status_vocabulary(db)
     await _migrate_insurance_taxonomy(db)
+    await _migrate_taxonomy_description_columns(db)
     await bootstrap_initial_admin(db)
+
+
+async def _migrate_taxonomy_description_columns(db: aiosqlite.Connection) -> None:
+    """
+    Add ``description`` to ``insurance_categories`` and ``policy_types`` for
+    the admin "Insurance Master" UI. Both columns are nullable text; existing
+    rows are unaffected.
+    """
+    async with db.execute("PRAGMA table_info(insurance_categories)") as cursor:
+        cat_cols = {r[1] for r in await cursor.fetchall()}
+    if "description" not in cat_cols:
+        await db.execute(
+            "ALTER TABLE insurance_categories ADD COLUMN description TEXT"
+        )
+
+    async with db.execute("PRAGMA table_info(policy_types)") as cursor:
+        pt_cols = {r[1] for r in await cursor.fetchall()}
+    if "description" not in pt_cols:
+        await db.execute("ALTER TABLE policy_types ADD COLUMN description TEXT")
 
 
 async def _migrate_insurance_taxonomy(db: aiosqlite.Connection) -> None:

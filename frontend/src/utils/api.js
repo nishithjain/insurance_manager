@@ -202,6 +202,30 @@ export const typesAPI = {
     }),
 };
 
+/**
+ * Admin-only "Insurance Master" CRUD.
+ *
+ * Insurance Type maps to the ``insurance_categories`` table; Policy Type
+ * maps to the ``policy_types`` table. Delete returns ``{ outcome, message }``
+ * where ``outcome`` is "deleted" (hard delete) or "deactivated" (in use, was
+ * soft-deactivated).
+ */
+export const adminInsuranceTypesAPI = {
+  list: (params) => api.get('/admin/insurance-types', { params }),
+  get: (id) => api.get(`/admin/insurance-types/${id}`),
+  create: (data) => api.post('/admin/insurance-types', data),
+  update: (id, data) => api.put(`/admin/insurance-types/${id}`, data),
+  delete: (id) => api.delete(`/admin/insurance-types/${id}`),
+};
+
+export const adminPolicyTypesAPI = {
+  list: (params) => api.get('/admin/policy-types', { params }),
+  get: (id) => api.get(`/admin/policy-types/${id}`),
+  create: (data) => api.post('/admin/policy-types', data),
+  update: (id, data) => api.put(`/admin/policy-types/${id}`, data),
+  delete: (id) => api.delete(`/admin/policy-types/${id}`),
+};
+
 /** Admin-only user management */
 export const usersAPI = {
   list: (params) => api.get('/users', { params }),
