@@ -8,6 +8,7 @@ import Settings from '@/pages/Settings';
 import Statistics from '@/pages/Statistics';
 import Login from '@/pages/Login';
 import UserManagement from '@/pages/UserManagement';
+import CustomerManagement from '@/pages/CustomerManagement';
 import { AuthProvider } from '@/auth/AuthContext';
 import ProtectedRoute from '@/auth/ProtectedRoute';
 import '@/App.css';
@@ -74,6 +75,14 @@ function AppRouter() {
         element={
           <ProtectedRoute requireAdmin>
             <UserManagement />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/customers"
+        element={
+          <ProtectedRoute requireAdmin>
+            <CustomerManagement />
           </ProtectedRoute>
         }
       />

@@ -45,6 +45,35 @@ class CustomerCreate(BaseModel):
     address: Optional[str] = None
 
 
+class CustomerAdmin(BaseModel):
+    """
+    Admin-panel response for ``/api/admin/customers``.
+
+    Extends :class:`Customer` with fields the admin grid surfaces (policy
+    count, last update timestamp) without altering the per-user
+    ``/api/customers`` contract used elsewhere.
+    """
+
+    id: str
+    user_id: str
+    name: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    address: Optional[str] = None
+    created_at: str
+    updated_at: Optional[str] = None
+    policy_count: int = 0
+
+
+class CustomerAdminUpdate(BaseModel):
+    """Admin → PUT /api/admin/customers/{id}. ``name`` required, others optional."""
+
+    name: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    address: Optional[str] = None
+
+
 # ============= POLICY =============
 
 class Policy(BaseModel):
@@ -79,6 +108,35 @@ class PolicyCreate(BaseModel):
     end_date: str
     premium: float
     status: str = "active"
+
+
+class PolicyUpdateCustomerFields(BaseModel):
+    """
+    Editable customer fields embedded in :class:`PolicyUpdate`.
+
+    Deliberately does NOT include ``name`` — the customer name is read-only
+    in the policy edit modal. Any ``name`` key sent by a client is silently
+    dropped by Pydantic's default ``extra='ignore'`` behavior, so the backend
+    cannot be tricked into renaming the customer through this endpoint.
+    """
+
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    address: Optional[str] = None
+
+
+class PolicyUpdate(PolicyCreate):
+    """
+    PUT /api/policies/{id} body.
+
+    Mirrors :class:`PolicyCreate` for the policy row itself and adds an
+    optional ``customer`` block so the edit modal can update the linked
+    customer's contact details in the same round-trip. When ``customer`` is
+    omitted (e.g. mobile clients), no customer-side write is performed —
+    behavior is identical to the prior contract.
+    """
+
+    customer: Optional[PolicyUpdateCustomerFields] = None
 
 
 class PolicyContactUpdate(BaseModel):

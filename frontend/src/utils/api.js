@@ -175,6 +175,14 @@ export const authAPI = {
   logout: () => api.post('/auth/logout'),
 };
 
+/** Admin-only customer management (cross-tenant view + edit) */
+export const adminCustomerAPI = {
+  /** ``params.search`` is forwarded as ?search=… to filter on the server. */
+  list: (params) => api.get('/admin/customers', { params }),
+  get: (id) => api.get(`/admin/customers/${id}`),
+  update: (id, data) => api.put(`/admin/customers/${id}`, data),
+};
+
 /** Admin-only user management */
 export const usersAPI = {
   list: (params) => api.get('/users', { params }),
