@@ -74,12 +74,21 @@ POLICY_SELECT = """
         p.renewal_status AS renewal_status,
         p.renewal_resolution_note AS renewal_resolution_note,
         p.renewal_resolved_at AS renewal_resolved_at,
-        p.renewal_resolved_by AS renewal_resolved_by
+        p.renewal_resolved_by AS renewal_resolved_by,
+        pt.id AS policy_type_id,
+        pt.name AS policy_type_name,
+        ic.id AS insurance_type_id,
+        COALESCE(ic.name, it.category_group) AS insurance_type_name
     FROM policies p
     JOIN customers cu ON p.customer_id = cu.customer_id
     JOIN insurance_types it ON p.insurance_type_id = it.insurance_type_id
     LEFT JOIN companies co ON p.company_id = co.company_id
     LEFT JOIN payment_statuses ps ON p.payment_status_id = ps.payment_status_id
+    LEFT JOIN policy_types pt ON p.policy_type_id = pt.id
+    LEFT JOIN insurance_categories ic
+        ON ic.id = pt.insurance_category_id
+        OR (pt.insurance_category_id IS NULL
+            AND ic.name = it.category_group COLLATE NOCASE)
 """
 
 
@@ -221,6 +230,15 @@ def policy_row_to_model(row: dict) -> Policy:
             prem = float(prem)
         except (TypeError, ValueError):
             prem = 0.0
+
+    def _maybe_int(v):
+        if v is None:
+            return None
+        try:
+            return int(v)
+        except (TypeError, ValueError):
+            return None
+
     return Policy(
         id=str(row["id"]),
         user_id=row["user_id"],
@@ -244,6 +262,10 @@ def policy_row_to_model(row: dict) -> Policy:
         renewal_resolution_note=row.get("renewal_resolution_note"),
         renewal_resolved_at=row.get("renewal_resolved_at"),
         renewal_resolved_by=row.get("renewal_resolved_by"),
+        insurance_type_id=_maybe_int(row.get("insurance_type_id")),
+        insurance_type_name=row.get("insurance_type_name"),
+        policy_type_id=_maybe_int(row.get("policy_type_id")),
+        policy_type_name=row.get("policy_type_name"),
     )
 
 
@@ -289,13 +311,20 @@ async def default_payment_status_id(db: aiosqlite.Connection) -> Optional[int]:
 async def insert_empty_policy_detail(
     db: aiosqlite.Connection, policy_id: int, insurance_type_id: int
 ) -> None:
-    """Insert a stub row into motor/health/property detail table based on category_group."""
+    """
+    Insert a stub row into motor / health / property detail tables based on
+    the legacy ``insurance_types.category_group``.
+
+    Categories without a per-LOB detail table (Life, Travel, ...) are skipped
+    intentionally — the policy itself still saves cleanly with no detail row,
+    matching the existing behavior for unknown groups.
+    """
     async with db.execute(
         "SELECT category_group FROM insurance_types WHERE insurance_type_id = ?",
         (insurance_type_id,),
     ) as cur:
         row = await cur.fetchone()
-    cat = (row[0] if row else "Motor") or "Motor"
+    cat = ((row[0] if row else "Motor") or "Motor").strip()
     if cat == "Motor":
         await db.execute(
             "INSERT INTO motor_policy_details (policy_id) VALUES (?)", (policy_id,)
@@ -304,10 +333,99 @@ async def insert_empty_policy_detail(
         await db.execute(
             "INSERT INTO health_policy_details (policy_id) VALUES (?)", (policy_id,)
         )
-    else:
+    elif cat == "Property":
         await db.execute(
             "INSERT INTO property_policy_details (policy_id) VALUES (?)", (policy_id,)
         )
+    # Life / Travel: no per-LOB detail row — handled in policies row alone.
+
+
+# ---- New taxonomy helpers (insurance_categories + policy_types) -------------
+
+
+async def get_insurance_category_id_by_name(
+    db: aiosqlite.Connection, name: str
+) -> Optional[int]:
+    async with db.execute(
+        "SELECT id FROM insurance_categories WHERE name = ? COLLATE NOCASE LIMIT 1",
+        (name,),
+    ) as cur:
+        row = await cur.fetchone()
+    return int(row[0]) if row else None
+
+
+async def get_policy_type_with_category(
+    db: aiosqlite.Connection, policy_type_id: int
+) -> Optional[dict]:
+    """Return the policy_types row with its parent category id/name, or None."""
+    async with db.execute(
+        """SELECT pt.id AS id, pt.name AS name, pt.is_active AS is_active,
+                  pt.insurance_category_id AS insurance_category_id,
+                  ic.name AS insurance_category_name
+           FROM policy_types pt
+           JOIN insurance_categories ic ON ic.id = pt.insurance_category_id
+           WHERE pt.id = ?""",
+        (policy_type_id,),
+    ) as cur:
+        row = await cur.fetchone()
+    return dict(row) if row else None
+
+
+async def resolve_legacy_insurance_type_for_category(
+    db: aiosqlite.Connection, category_name: str
+) -> int:
+    """
+    Pick a legacy ``insurance_types`` row to satisfy the existing
+    ``policies.insurance_type_id`` NOT NULL FK when a policy is created
+    using the new taxonomy.
+
+    Strategy: prefer an exact ``category_group`` match; if missing (e.g.
+    Life, Travel) auto-create a single legacy row with ``insurance_type_name
+    = category_group = <category_name>``. This keeps old code paths (CSV
+    export, statistics, motor/health/property detail tables) functional
+    while letting the new categories flow through unmodified.
+    """
+    cat = (category_name or "").strip()
+    if not cat:
+        async with db.execute(
+            "SELECT insurance_type_id FROM insurance_types ORDER BY insurance_type_id LIMIT 1"
+        ) as cur:
+            row = await cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=500, detail="insurance_types is empty")
+        return int(row[0])
+
+    async with db.execute(
+        """SELECT insurance_type_id FROM insurance_types
+           WHERE category_group = ? COLLATE NOCASE
+           ORDER BY insurance_type_id LIMIT 1""",
+        (cat,),
+    ) as cur:
+        row = await cur.fetchone()
+    if row:
+        return int(row[0])
+
+    # Auto-create a placeholder legacy row for new categories (Life/Travel).
+    # Use INSERT OR IGNORE in case an unrelated row with the same name already
+    # exists; fall back to a name-based SELECT either way.
+    await db.execute(
+        """INSERT OR IGNORE INTO insurance_types (insurance_type_name, category_group)
+           VALUES (?, ?)""",
+        (cat, cat),
+    )
+    async with db.execute(
+        """SELECT insurance_type_id FROM insurance_types
+           WHERE insurance_type_name = ? COLLATE NOCASE
+           ORDER BY insurance_type_id LIMIT 1""",
+        (cat,),
+    ) as cur:
+        row = await cur.fetchone()
+    if not row:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to resolve legacy insurance_type for category '{cat}'",
+        )
+    return int(row[0])
 
 
 async def payment_status_id_by_name(

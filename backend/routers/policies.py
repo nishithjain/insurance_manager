@@ -21,11 +21,13 @@ from repositories.sql import (
     POLICY_SELECT,
     customer_row_to_model,
     default_payment_status_id,
+    get_policy_type_with_category,
     insert_empty_policy_detail,
     parse_policy_id,
     payment_status_id_by_name,
     policy_row_to_model,
     resolve_insurance_type_id,
+    resolve_legacy_insurance_type_for_category,
     sql_float,
 )
 from schemas import (
@@ -43,6 +45,52 @@ from schemas import (
 )
 
 router = APIRouter(tags=["policies"])
+
+
+async def _resolve_policy_taxonomy(
+    db: aiosqlite.Connection,
+    *,
+    policy_type_id: int | None,
+    insurance_type_id: int | None,
+    legacy_policy_type: str,
+) -> tuple[int, int | None]:
+    """
+    Resolve both the legacy ``insurance_types`` FK and the new
+    ``policy_types`` FK from the request body.
+
+    Strategy (in priority order):
+      1. ``policy_type_id`` (new) is present → look up its row and parent
+         category. If ``insurance_type_id`` is also sent, verify the child
+         belongs to that parent. Derive the legacy FK from the parent
+         category's name.
+      2. Otherwise fall back to the legacy slug-based resolver and leave
+         ``policies.policy_type_id`` NULL (current Android contract).
+
+    Returns ``(legacy_insurance_type_id, new_policy_type_id)``.
+    """
+    if policy_type_id is not None:
+        pt = await get_policy_type_with_category(db, int(policy_type_id))
+        if not pt:
+            raise HTTPException(status_code=400, detail="Unknown policy_type_id")
+        if (
+            insurance_type_id is not None
+            and int(insurance_type_id) != int(pt["insurance_category_id"])
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "policy_type_id does not belong to the selected "
+                    "insurance_type_id"
+                ),
+            )
+        legacy_id = await resolve_legacy_insurance_type_for_category(
+            db, str(pt["insurance_category_name"])
+        )
+        return legacy_id, int(pt["id"])
+
+    # Legacy path: clients (e.g. Android) still send only the manual-form slug.
+    legacy_id = await resolve_insurance_type_id(db, legacy_policy_type)
+    return legacy_id, None
 
 
 @router.get("/policies", response_model=List[Policy])
@@ -79,7 +127,12 @@ async def create_policy(
     if not customer:
         raise HTTPException(status_code=404, detail="Customer not found")
 
-    it_id = await resolve_insurance_type_id(db, policy.policy_type)
+    it_id, ptype_id = await _resolve_policy_taxonomy(
+        db,
+        policy_type_id=policy.policy_type_id,
+        insurance_type_id=policy.insurance_type_id,
+        legacy_policy_type=policy.policy_type,
+    )
     pay_id = await default_payment_status_id(db)
 
     created_at = datetime.now(timezone.utc).isoformat()
@@ -92,8 +145,9 @@ async def create_policy(
             date_of_issue, policy_end_date, policy_no, card_details, status,
             last_contacted_at, contact_status, follow_up_date,
             renewal_status, renewal_resolution_note, renewal_resolved_at, renewal_resolved_by,
+            policy_type_id,
             created_at, updated_at
-        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
         (
             source_record_id,
             cust_pk,
@@ -116,6 +170,7 @@ async def create_policy(
             None,
             None,
             None,
+            ptype_id,
             created_at,
             created_at,
         ),
@@ -308,28 +363,58 @@ async def update_policy(
         if not await cur.fetchone():
             raise HTTPException(status_code=404, detail="Customer not found")
 
-    it_id = await resolve_insurance_type_id(db, policy.policy_type)
+    it_id, ptype_id = await _resolve_policy_taxonomy(
+        db,
+        policy_type_id=policy.policy_type_id,
+        insurance_type_id=policy.insurance_type_id,
+        legacy_policy_type=policy.policy_type,
+    )
     pay_id = await default_payment_status_id(db)
     now = datetime.now(timezone.utc).isoformat()
 
-    await db.execute(
-        """UPDATE policies SET customer_id = ?, insurance_type_id = ?, policy_no = ?,
-           total_premium = ?, payment_status_id = ?, date_of_issue = ?, policy_end_date = ?,
-           status = ?, updated_at = ?
-           WHERE policy_id = ?""",
-        (
-            cust_pk,
-            it_id,
-            policy.policy_number,
-            policy.premium,
-            pay_id,
-            policy.start_date,
-            policy.end_date,
-            policy.status,
-            now,
-            pid,
-        ),
-    )
+    # ``policy_type_id`` is only overwritten when the client actually sent a
+    # value; this keeps legacy clients (Android) and the per-payment /
+    # per-contact PATCH flows from clobbering a previously-set value.
+    if policy.policy_type_id is not None:
+        await db.execute(
+            """UPDATE policies SET customer_id = ?, insurance_type_id = ?,
+                  policy_type_id = ?, policy_no = ?,
+                  total_premium = ?, payment_status_id = ?, date_of_issue = ?,
+                  policy_end_date = ?, status = ?, updated_at = ?
+               WHERE policy_id = ?""",
+            (
+                cust_pk,
+                it_id,
+                ptype_id,
+                policy.policy_number,
+                policy.premium,
+                pay_id,
+                policy.start_date,
+                policy.end_date,
+                policy.status,
+                now,
+                pid,
+            ),
+        )
+    else:
+        await db.execute(
+            """UPDATE policies SET customer_id = ?, insurance_type_id = ?, policy_no = ?,
+               total_premium = ?, payment_status_id = ?, date_of_issue = ?, policy_end_date = ?,
+               status = ?, updated_at = ?
+               WHERE policy_id = ?""",
+            (
+                cust_pk,
+                it_id,
+                policy.policy_number,
+                policy.premium,
+                pay_id,
+                policy.start_date,
+                policy.end_date,
+                policy.status,
+                now,
+                pid,
+            ),
+        )
 
     if policy.customer is not None:
         # Only fields explicitly provided by the client are touched (PATCH-like).

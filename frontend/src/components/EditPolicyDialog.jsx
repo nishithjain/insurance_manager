@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { policyAPI } from '@/utils/api';
+import { policyAPI, typesAPI } from '@/utils/api';
 import { useToast } from '@/hooks/use-toast';
 
 /** Map API policy_type label back to form slug (backend resolves slug → insurance_types). */
@@ -32,9 +32,44 @@ function policyTypeToSlug(policyType) {
   return 'auto';
 }
 
+// Best-effort heuristic for legacy rows where ``policy.insurance_type_id`` is
+// NULL. We check the ``policy.policy_type`` legacy text against the user's
+// new Insurance Type list (Motor / Health / ...). Used only on first paint
+// of the edit modal — the user always has the option to manually re-pick.
+function guessInsuranceTypeIdFromLegacy(policy, insuranceTypes) {
+  if (!policy || !insuranceTypes?.length) return '';
+  if (policy.insurance_type_id) return String(policy.insurance_type_id);
+  const hint = `${policy.insurance_type_name || ''} ${policy.policy_type || ''}`.toLowerCase();
+  let bucket = null;
+  if (hint.includes('motor') || hint.includes('car') || hint.includes('wheeler')) {
+    bucket = 'motor';
+  } else if (hint.includes('health')) {
+    bucket = 'health';
+  } else if (hint.includes('property') || hint.includes('home') || hint.includes('business')) {
+    bucket = 'property';
+  } else if (hint.includes('life')) {
+    bucket = 'life';
+  } else if (hint.includes('travel')) {
+    bucket = 'travel';
+  }
+  if (!bucket) return '';
+  const match = insuranceTypes.find((t) => (t.name || '').toLowerCase() === bucket);
+  return match ? String(match.id) : '';
+}
+
+const LEGACY_SLUG_FOR_INSURANCE_TYPE = {
+  motor: 'auto',
+  health: 'health',
+  property: 'home',
+  life: 'life',
+  travel: 'auto',
+};
+
 const EMPTY_FORM = {
   policy_number: '',
   policy_type: 'auto',
+  insurance_type_id: '',
+  policy_type_id: '',
   start_date: '',
   end_date: '',
   premium: '',
@@ -48,6 +83,8 @@ const EditPolicyDialog = ({ policy, customers, open, onOpenChange, onSuccess }) 
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState(EMPTY_FORM);
+  const [insuranceTypes, setInsuranceTypes] = useState([]);
+  const [policyTypes, setPolicyTypes] = useState([]);
 
   /**
    * Linked customer record. Customer name is shown read-only; the editable
@@ -62,6 +99,44 @@ const EditPolicyDialog = ({ policy, customers, open, onOpenChange, onSuccess }) 
   }, [policy, customers]);
 
   useEffect(() => {
+    if (!open) return undefined;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await typesAPI.listInsuranceTypes();
+        if (!cancelled) setInsuranceTypes(res.data || []);
+      } catch (err) {
+        console.warn('Failed to load insurance types', err);
+        if (!cancelled) setInsuranceTypes([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
+
+  useEffect(() => {
+    const itid = formData.insurance_type_id;
+    if (!itid) {
+      setPolicyTypes([]);
+      return undefined;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await typesAPI.listPolicyTypes(itid);
+        if (!cancelled) setPolicyTypes(res.data || []);
+      } catch (err) {
+        console.warn('Failed to load policy types', err);
+        if (!cancelled) setPolicyTypes([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [formData.insurance_type_id]);
+
+  useEffect(() => {
     if (policy && open) {
       const start = policy.start_date?.includes('T')
         ? policy.start_date.split('T')[0]
@@ -69,9 +144,14 @@ const EditPolicyDialog = ({ policy, customers, open, onOpenChange, onSuccess }) 
       const end = policy.end_date?.includes('T')
         ? policy.end_date.split('T')[0]
         : (policy.end_date || '').slice(0, 10);
+      const seedItId = policy.insurance_type_id
+        ? String(policy.insurance_type_id)
+        : guessInsuranceTypeIdFromLegacy(policy, insuranceTypes);
       setFormData({
         policy_number: policy.policy_number || '',
         policy_type: policyTypeToSlug(policy.policy_type),
+        insurance_type_id: seedItId,
+        policy_type_id: policy.policy_type_id ? String(policy.policy_type_id) : '',
         start_date: start || '',
         end_date: end || '',
         premium:
@@ -84,7 +164,15 @@ const EditPolicyDialog = ({ policy, customers, open, onOpenChange, onSuccess }) 
         customer_address: linkedCustomer?.address || '',
       });
     }
-  }, [policy, open, linkedCustomer]);
+  }, [policy, open, linkedCustomer, insuranceTypes]);
+
+  const selectedInsuranceType = useMemo(
+    () =>
+      insuranceTypes.find(
+        (t) => String(t.id) === String(formData.insurance_type_id)
+      ) || null,
+    [insuranceTypes, formData.insurance_type_id]
+  );
 
   if (!policy) return null;
 
@@ -111,13 +199,36 @@ const EditPolicyDialog = ({ policy, customers, open, onOpenChange, onSuccess }) 
       return;
     }
 
+    if (!formData.insurance_type_id) {
+      toast({
+        title: 'Insurance type required',
+        description: 'Pick an Insurance Type before saving.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (!formData.policy_type_id) {
+      toast({
+        title: 'Policy type required',
+        description: 'Pick a Policy Type before saving.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setLoading(true);
     try {
+      const itName = (selectedInsuranceType?.name || '').toLowerCase();
+      const legacySlug =
+        LEGACY_SLUG_FOR_INSURANCE_TYPE[itName] || formData.policy_type || 'auto';
+
       // ``customer.name`` is intentionally NOT sent — name is read-only here.
       await policyAPI.update(policy.id, {
         customer_id: String(policy.customer_id),
         policy_number: formData.policy_number.trim(),
-        policy_type: formData.policy_type,
+        policy_type: legacySlug,
+        insurance_type_id: Number(formData.insurance_type_id),
+        policy_type_id: Number(formData.policy_type_id),
         start_date: formData.start_date,
         end_date: formData.end_date,
         premium,
@@ -229,23 +340,62 @@ const EditPolicyDialog = ({ policy, customers, open, onOpenChange, onSuccess }) 
                 required
               />
             </div>
-            <div>
-              <Label>Insurance type *</Label>
-              <Select
-                value={formData.policy_type}
-                onValueChange={(v) => setFormData({ ...formData, policy_type: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="auto">Motor / auto</SelectItem>
-                  <SelectItem value="health">Health</SelectItem>
-                  <SelectItem value="home">Property / home</SelectItem>
-                  <SelectItem value="life">Life</SelectItem>
-                  <SelectItem value="business">Business</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label>Insurance type *</Label>
+                <Select
+                  value={
+                    formData.insurance_type_id ? String(formData.insurance_type_id) : ''
+                  }
+                  onValueChange={(v) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      insurance_type_id: v,
+                      policy_type_id: '',
+                    }))
+                  }
+                >
+                  <SelectTrigger data-testid="ep-insurance-type">
+                    <SelectValue placeholder="Select category…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {insuranceTypes.map((t) => (
+                      <SelectItem key={t.id} value={String(t.id)}>
+                        {t.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Policy type *</Label>
+                <Select
+                  value={formData.policy_type_id ? String(formData.policy_type_id) : ''}
+                  onValueChange={(v) =>
+                    setFormData((prev) => ({ ...prev, policy_type_id: v }))
+                  }
+                  disabled={!formData.insurance_type_id || policyTypes.length === 0}
+                >
+                  <SelectTrigger data-testid="ep-policy-type">
+                    <SelectValue
+                      placeholder={
+                        formData.insurance_type_id
+                          ? policyTypes.length
+                            ? 'Select variant…'
+                            : 'No variants'
+                          : 'Pick insurance type first'
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {policyTypes.map((t) => (
+                      <SelectItem key={t.id} value={String(t.id)}>
+                        {t.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
