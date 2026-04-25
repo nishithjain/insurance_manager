@@ -110,6 +110,35 @@ class PolicyCreate(BaseModel):
     status: str = "active"
 
 
+class PolicyUpdateCustomerFields(BaseModel):
+    """
+    Editable customer fields embedded in :class:`PolicyUpdate`.
+
+    Deliberately does NOT include ``name`` — the customer name is read-only
+    in the policy edit modal. Any ``name`` key sent by a client is silently
+    dropped by Pydantic's default ``extra='ignore'`` behavior, so the backend
+    cannot be tricked into renaming the customer through this endpoint.
+    """
+
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    address: Optional[str] = None
+
+
+class PolicyUpdate(PolicyCreate):
+    """
+    PUT /api/policies/{id} body.
+
+    Mirrors :class:`PolicyCreate` for the policy row itself and adds an
+    optional ``customer`` block so the edit modal can update the linked
+    customer's contact details in the same round-trip. When ``customer`` is
+    omitted (e.g. mobile clients), no customer-side write is performed —
+    behavior is identical to the prior contract.
+    """
+
+    customer: Optional[PolicyUpdateCustomerFields] = None
+
+
 class PolicyContactUpdate(BaseModel):
     """Partial update for renewal contact tracking (PATCH). Omitted fields are left unchanged."""
 

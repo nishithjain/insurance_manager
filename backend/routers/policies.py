@@ -37,6 +37,7 @@ from schemas import (
     PolicyDetailBundle,
     PolicyPaymentUpdate,
     PolicyRenewalResolutionUpdate,
+    PolicyUpdate,
     PropertyPolicyDetailsDto,
     User,
 )
@@ -270,11 +271,19 @@ async def _load_property_details(db, pid: int):
 @router.put("/policies/{policy_id}", response_model=Policy)
 async def update_policy(
     policy_id: str,
-    policy: PolicyCreate,
+    policy: PolicyUpdate,
     db: aiosqlite.Connection = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    """Update a policy."""
+    """
+    Update a policy and (optionally) the linked customer's contact fields.
+
+    The body extends :class:`PolicyCreate` with an optional ``customer`` block
+    (email / phone / address). Customer **name** is intentionally omitted from
+    :class:`PolicyUpdateCustomerFields`, so even if a client sends one it is
+    discarded by Pydantic before reaching this handler — there is no code
+    path here that updates ``customers.full_name``.
+    """
     pid = parse_policy_id(policy_id)
 
     async with db.execute(
@@ -321,6 +330,54 @@ async def update_policy(
             pid,
         ),
     )
+
+    if policy.customer is not None:
+        # Only fields explicitly provided by the client are touched (PATCH-like).
+        # ``full_name`` is unreachable from this body by design — see
+        # :class:`PolicyUpdateCustomerFields`.
+        cust_patch = policy.customer.model_dump(exclude_unset=True)
+
+        col_sets: list[str] = []
+        col_params: list = []
+        if "email" in cust_patch:
+            col_sets.append("email = ?")
+            col_params.append((cust_patch["email"] or "").strip() or None)
+        if "phone" in cust_patch:
+            col_sets.append("phone_number = ?")
+            col_params.append((cust_patch["phone"] or "").strip() or None)
+
+        if col_sets:
+            col_sets.append("updated_at = ?")
+            col_params.append(now)
+            col_params.append(cust_pk)
+            await db.execute(
+                f"UPDATE customers SET {', '.join(col_sets)} WHERE customer_id = ?",
+                tuple(col_params),
+            )
+
+        if "address" in cust_patch:
+            addr_text = (cust_patch["address"] or "").strip() or None
+            async with db.execute(
+                """SELECT address_id FROM customer_addresses
+                   WHERE customer_id = ? ORDER BY address_id LIMIT 1""",
+                (cust_pk,),
+            ) as cur:
+                addr_row = await cur.fetchone()
+            if addr_row:
+                await db.execute(
+                    """UPDATE customer_addresses
+                       SET raw_address = ?, updated_at = ?
+                       WHERE address_id = ?""",
+                    (addr_text, now, addr_row[0]),
+                )
+            elif addr_text:
+                await db.execute(
+                    """INSERT INTO customer_addresses (
+                         customer_id, raw_address, country, created_at, updated_at
+                       ) VALUES (?, ?, 'India', ?, ?)""",
+                    (cust_pk, addr_text, now, now),
+                )
+
     await db.commit()
 
     async with db.execute(
