@@ -37,10 +37,11 @@ import com.insurance.mobile.R
 import com.insurance.mobile.core.network.dto.ExpiringWindowPolicyDto
 import com.insurance.mobile.core.util.AppCurrency
 import com.insurance.mobile.core.util.buildWhatsAppRenewalMessage
+import com.insurance.mobile.core.util.formatPhoneNumberForDial
+import com.insurance.mobile.core.util.formatPhoneNumberForWhatsApp
 import com.insurance.mobile.core.util.openWhatsAppWithFallback
 import com.insurance.mobile.core.util.parsePolicyEndDate
 import com.insurance.mobile.core.util.safeStartDialer
-import com.insurance.mobile.core.util.sanitizePhoneNumber
 import com.insurance.mobile.feature.renewalwindow.presentation.RenewalWindowListUiState
 import com.insurance.mobile.feature.renewalwindow.presentation.RenewalWindowListViewModel
 import com.insurance.mobile.ui.components.ContactActionButtonRow
@@ -171,7 +172,10 @@ private fun ExpiringWindowPolicyCard(
         if (d != null) dateFmt.format(d) else (item.endDate ?: "—")
     }
     val premiumLabel = item.premium?.let { AppCurrency.formatter.format(it) } ?: "—"
-    val sanitized = remember(item.customerPhone) { sanitizePhoneNumber(item.customerPhone) }
+    val dialNumber = remember(item.customerPhone) { formatPhoneNumberForDial(item.customerPhone) }
+    val whatsAppNumber = remember(item.customerPhone) {
+        formatPhoneNumberForWhatsApp(item.customerPhone)
+    }
     val phoneDisplay = item.customerPhone?.trim().takeUnless { it.isNullOrEmpty() } ?: "—"
 
     Card(
@@ -244,13 +248,13 @@ private fun ExpiringWindowPolicyCard(
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
 
-            if (sanitized != null) {
+            if (dialNumber != null) {
                 Text(
                     text = "${stringResource(R.string.renewal_window_field_phone)}: $phoneDisplay",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.clickable {
-                        safeStartDialer(context, sanitized)
+                        safeStartDialer(context, dialNumber)
                     },
                 )
             } else {
@@ -261,14 +265,15 @@ private fun ExpiringWindowPolicyCard(
                 )
             }
 
-            if (sanitized != null) {
+            if (dialNumber != null) {
                 ContactActionButtonRow(
                     callLabel = stringResource(R.string.renewal_window_action_call),
                     whatsAppLabel = stringResource(R.string.renewal_window_action_whatsapp),
-                    onCall = { safeStartDialer(context, sanitized) },
+                    onCall = { safeStartDialer(context, dialNumber) },
                     onWhatsApp = {
+                        val target = whatsAppNumber ?: return@ContactActionButtonRow
                         val message = buildWhatsAppRenewalMessage(item, expiryLabel, context)
-                        openWhatsAppWithFallback(context, sanitized, message)
+                        openWhatsAppWithFallback(context, target, message)
                     },
                 )
             }

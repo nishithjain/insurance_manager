@@ -108,6 +108,8 @@ const Dashboard = () => {
   const [dailyReminderOpen, setDailyReminderOpen] = useState(false);
   /** Expiry list: all | not_contacted | contacted_today | follow_up */
   const [expiryContactFilter, setExpiryContactFilter] = useState('all');
+  /** Expiry list insurance-type filter: 'all' | <insurance_type_name lowercased> */
+  const [expiryInsuranceTypeFilter, setExpiryInsuranceTypeFilter] = useState('all');
   /** One-shot auto-run: CSV only fills statement_policy_lines; customers need this materialize step. */
   const autoMaterializeAttempted = useRef(false);
   /** Avoid double-applying localStorage when Radix fires onOpenChange after programmatic close. */
@@ -284,11 +286,19 @@ const Dashboard = () => {
       const daysLeft = daysLeftUntil(end);
       if (daysLeft < 0 || daysLeft > 30) continue;
       const cust = byId[String(p.customer_id)];
+      const insuranceTypeName =
+        (p.insurance_type_name && String(p.insurance_type_name).trim()) || '';
+      const policyTypeName =
+        (p.policy_type_name && String(p.policy_type_name).trim()) ||
+        (p.policy_type && String(p.policy_type).trim()) ||
+        '';
       rows.push({
         policyId: p.id,
         customerName: cust?.name?.trim() || '—',
         phone: cust?.phone && String(cust.phone).trim() ? String(cust.phone).trim() : '',
-        policyType: p.policy_type || '—',
+        insuranceType: insuranceTypeName || '—',
+        insuranceTypeKey: insuranceTypeName.toLowerCase(),
+        policyType: policyTypeName || '—',
         policyNumber: (p.policy_number && String(p.policy_number).trim()) || '—',
         endDate: end,
         daysLeft,
@@ -329,16 +339,42 @@ const Dashboard = () => {
     [expiringSoonRows]
   );
 
+  /**
+   * Insurance-type chips offered above the Expiry list. We always show the
+   * canonical Motor/Health/Life/Travel/Property options, plus any extra type
+   * that actually appears in the current expiring rows so dynamic categories
+   * (e.g. an admin-added "Cyber") still get a one-click filter.
+   */
+  const expiryInsuranceTypeOptions = useMemo(() => {
+    const canonical = ['Motor', 'Health', 'Life', 'Travel', 'Property'];
+    const seen = new Map();
+    for (const name of canonical) seen.set(name.toLowerCase(), name);
+    for (const row of expiringSoonRows) {
+      const raw = row.insuranceType;
+      if (!raw || raw === '—') continue;
+      const key = raw.toLowerCase();
+      if (!seen.has(key)) seen.set(key, raw);
+    }
+    return Array.from(seen, ([key, label]) => ({ key, label }));
+  }, [expiringSoonRows]);
+
   const filteredExpiringSoonRows = useMemo(() => {
-    if (expiryContactFilter === 'all') return expiringSoonRows;
     return expiringSoonRows.filter((row) => {
-      const eff = getEffectiveContactStatus(row);
-      if (expiryContactFilter === 'not_contacted') return eff === CONTACT_STATUS.NOT_CONTACTED;
-      if (expiryContactFilter === 'contacted_today') return eff === CONTACT_STATUS.CONTACTED_TODAY;
-      if (expiryContactFilter === 'follow_up') return eff === CONTACT_STATUS.FOLLOW_UP;
+      if (expiryContactFilter !== 'all') {
+        const eff = getEffectiveContactStatus(row);
+        if (expiryContactFilter === 'not_contacted' && eff !== CONTACT_STATUS.NOT_CONTACTED)
+          return false;
+        if (expiryContactFilter === 'contacted_today' && eff !== CONTACT_STATUS.CONTACTED_TODAY)
+          return false;
+        if (expiryContactFilter === 'follow_up' && eff !== CONTACT_STATUS.FOLLOW_UP)
+          return false;
+      }
+      if (expiryInsuranceTypeFilter !== 'all') {
+        if ((row.insuranceTypeKey || '') !== expiryInsuranceTypeFilter) return false;
+      }
       return true;
     });
-  }, [expiringSoonRows, expiryContactFilter]);
+  }, [expiringSoonRows, expiryContactFilter, expiryInsuranceTypeFilter]);
 
   useEffect(() => {
     if (loading) return;
@@ -723,6 +759,38 @@ const Dashboard = () => {
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-gray-600">Insurance type</Label>
+                  <div className="flex flex-wrap gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setExpiryInsuranceTypeFilter('all')}
+                      data-testid="expiry-insurance-type-all"
+                      className={`h-8 rounded-full border px-3 text-xs font-medium transition-colors ${
+                        expiryInsuranceTypeFilter === 'all'
+                          ? 'border-indigo-600 bg-indigo-600 text-white'
+                          : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      All
+                    </button>
+                    {expiryInsuranceTypeOptions.map((opt) => (
+                      <button
+                        key={opt.key}
+                        type="button"
+                        onClick={() => setExpiryInsuranceTypeFilter(opt.key)}
+                        data-testid={`expiry-insurance-type-${opt.key}`}
+                        className={`h-8 rounded-full border px-3 text-xs font-medium transition-colors ${
+                          expiryInsuranceTypeFilter === opt.key
+                            ? 'border-indigo-600 bg-indigo-600 text-white'
+                            : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
               {expiringSoonRows.length === 0 ? (
                 <p className="text-sm text-gray-500 py-6 text-center border rounded-lg bg-gray-50/80">
@@ -738,6 +806,7 @@ const Dashboard = () => {
                     <TableHeader>
                       <TableRow className="bg-gray-50/80">
                         <TableHead className="min-w-[120px]">Customer</TableHead>
+                        <TableHead className="min-w-[120px]">Insurance type</TableHead>
                         <TableHead>Policy type</TableHead>
                         <TableHead>Expiry date</TableHead>
                         <TableHead>Days left</TableHead>
@@ -765,6 +834,15 @@ const Dashboard = () => {
                             data-testid={`expiry-row-${row.policyId}`}
                           >
                             <TableCell className="font-medium">{row.customerName}</TableCell>
+                            <TableCell>
+                              {row.insuranceType && row.insuranceType !== '—' ? (
+                                <span className="inline-flex items-center rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-800">
+                                  {row.insuranceType}
+                                </span>
+                              ) : (
+                                <span className="text-gray-400">—</span>
+                              )}
+                            </TableCell>
                             <TableCell>{row.policyType}</TableCell>
                             <TableCell className="whitespace-nowrap">{expiryLabel}</TableCell>
                             <TableCell>
