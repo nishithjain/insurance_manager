@@ -1,6 +1,6 @@
 @echo off
 setlocal
-set "REPO_ROOT=%~dp0..\.."
+set "REPO_ROOT=%~dp0.."
 pushd "%REPO_ROOT%"
 
 call "%~dp0build_service_exe.bat"

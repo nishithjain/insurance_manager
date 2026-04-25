@@ -136,7 +136,7 @@ class InsuranceBackendService(win32serviceutil.ServiceFramework):
     def _run_service(self) -> None:
         config = load_config()
 
-        # Make imports like "server:app" resolve exactly as they do in scripts/windows/run_backend.bat.
+        # Make imports like "server:app" resolve exactly as they do in scripts/run_backend.bat.
         os.chdir(BACKEND_DIR)
         sys.path.insert(0, str(BACKEND_DIR))
 

@@ -13,7 +13,7 @@ set "DISPLAY_NAME=Insurance Manager Backend Service"
 set "DESCRIPTION=Runs the Insurance Manager FastAPI backend."
 
 set "APP_DIR=%~dp0"
-if not exist "%APP_DIR%config\backend_service_config.json" set "APP_DIR=%~dp0..\.."
+if not exist "%APP_DIR%config\backend_service_config.json" set "APP_DIR=%~dp0.."
 
 pushd "%APP_DIR%" >nul
 

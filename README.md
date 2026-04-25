@@ -84,9 +84,10 @@ yarn start
 # Open insurance-android/ in Android Studio and run the `app` configuration.
 ```
 
-Windows helper scripts live under `scripts/windows/` (for example
-`scripts/windows/recreate_venv.bat`, `scripts/windows/run_backend.bat`, and
-`scripts/windows/build_installer.bat`).
+Windows helper scripts live under `scripts/` (for example
+`scripts/recreate_venv.bat`, `scripts/run_backend.bat`, and
+`scripts/build_installer.bat`). The Windows service is managed through a
+single dispatcher: `scripts/service.bat install|status|start|stop|restart|uninstall`.
 
 ## SQLite backups
 

@@ -31,25 +31,22 @@ Name: "{app}\frontend_dist"
 Source: "..\backend\*"; DestDir: "{app}\backend"; Flags: recursesubdirs createallsubdirs ignoreversion; Excludes: "__pycache__\*,*.pyc,tests\*,.pytest_cache\*"
 Source: "..\installer_staging\frontend_dist\*"; DestDir: "{app}\frontend_dist"; Flags: recursesubdirs createallsubdirs ignoreversion
 Source: "..\config\backend_service_config.json"; DestDir: "{app}\config"; Flags: ignoreversion onlyifdoesntexist
-Source: "..\scripts\windows\windows_service.py"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\scripts\windows\install_service.bat"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\scripts\windows\uninstall_service.bat"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\scripts\windows\start_service.bat"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\scripts\windows\stop_service.bat"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\scripts\windows_service.py"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\scripts\service.bat"; DestDir: "{app}"; Flags: ignoreversion
 Source: "InsuranceManager.ico"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\dist\InsuranceBackendService\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\Open Insurance Manager"; Filename: "{win}\explorer.exe"; Parameters: """http://127.0.0.1:8000/"""; IconFilename: "{app}\InsuranceManager.ico"
-Name: "{group}\Start Backend Service"; Filename: "{app}\start_service.bat"; WorkingDir: "{app}"; IconFilename: "{app}\InsuranceManager.ico"
-Name: "{group}\Stop Backend Service"; Filename: "{app}\stop_service.bat"; WorkingDir: "{app}"; IconFilename: "{app}\InsuranceManager.ico"
+Name: "{group}\Start Backend Service"; Filename: "{app}\service.bat"; Parameters: "start"; WorkingDir: "{app}"; IconFilename: "{app}\InsuranceManager.ico"
+Name: "{group}\Stop Backend Service"; Filename: "{app}\service.bat"; Parameters: "stop"; WorkingDir: "{app}"; IconFilename: "{app}\InsuranceManager.ico"
 Name: "{group}\Open Logs Folder"; Filename: "{app}\logs"; IconFilename: "{app}\InsuranceManager.ico"
 Name: "{group}\Open Config File"; Filename: "notepad.exe"; Parameters: """{app}\config\backend_service_config.json"""; IconFilename: "{app}\InsuranceManager.ico"
 
 [Run]
-Filename: "{app}\install_service.bat"; WorkingDir: "{app}"; Flags: runhidden waituntilterminated
-Filename: "{app}\start_service.bat"; WorkingDir: "{app}"; Flags: runhidden waituntilterminated
+Filename: "{app}\service.bat"; Parameters: "install"; WorkingDir: "{app}"; Flags: runhidden waituntilterminated
+Filename: "{app}\service.bat"; Parameters: "start"; WorkingDir: "{app}"; Flags: runhidden waituntilterminated
 
 [UninstallRun]
-Filename: "{app}\stop_service.bat"; WorkingDir: "{app}"; Flags: runhidden waituntilterminated skipifdoesntexist; RunOnceId: "StopInsuranceBackendService"
-Filename: "{app}\uninstall_service.bat"; WorkingDir: "{app}"; Flags: runhidden waituntilterminated skipifdoesntexist; RunOnceId: "RemoveInsuranceBackendService"
+Filename: "{app}\service.bat"; Parameters: "stop"; WorkingDir: "{app}"; Flags: runhidden waituntilterminated skipifdoesntexist; RunOnceId: "StopInsuranceBackendService"
+Filename: "{app}\service.bat"; Parameters: "uninstall"; WorkingDir: "{app}"; Flags: runhidden waituntilterminated skipifdoesntexist; RunOnceId: "RemoveInsuranceBackendService"

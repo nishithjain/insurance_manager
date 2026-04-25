@@ -1,6 +1,6 @@
 @echo off
 setlocal
-set "REPO_ROOT=%~dp0..\.."
+set "REPO_ROOT=%~dp0.."
 pushd "%REPO_ROOT%"
 title Insurance Manager Cloudflare Tunnel
 
