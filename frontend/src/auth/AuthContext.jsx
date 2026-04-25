@@ -83,8 +83,10 @@ export function AuthProvider({ children }) {
       setStatus(STATUS.AUTHENTICATED);
       return { ok: true, user: res.data.user };
     } catch (err) {
+      const responseData = err?.response?.data;
       const detail =
-        err?.response?.data?.detail ||
+        responseData?.detail ||
+        (typeof responseData === 'string' ? responseData : null) ||
         err?.message ||
         'Sign-in failed. Please try again.';
       setError(String(detail));

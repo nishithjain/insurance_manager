@@ -71,6 +71,12 @@ async def login_with_google(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=str(exc),
         ) from exc
+    except Exception as exc:
+        logger.exception("Unexpected error while processing Google login.")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Sign-in failed on the server. Check backend logs for the exact error.",
+        ) from exc
 
     return TokenResponse(
         access_token=result.access_token,

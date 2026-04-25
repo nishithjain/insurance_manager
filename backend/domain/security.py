@@ -162,14 +162,21 @@ def verify_google_id_token(raw_token: str) -> GoogleIdentity:
     if not raw_token or not isinstance(raw_token, str):
         raise GoogleTokenError("Google ID token is required.")
 
+    client_id = _google_client_id()
     try:
         payload = google_id_token.verify_oauth2_token(
             raw_token,
             google_requests.Request(),
-            _google_client_id(),
+            client_id,
         )
     except ValueError as exc:
         raise GoogleTokenError(f"Google ID token rejected: {exc}") from exc
+    except Exception as exc:
+        logger.exception("Google ID token verification failed before Google returned a verdict.")
+        raise GoogleTokenError(
+            "Could not verify Google Sign-In with Google. Please check internet access "
+            "on the backend machine and try again."
+        ) from exc
 
     email = (payload.get("email") or "").strip().lower()
     if not email:

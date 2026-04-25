@@ -38,19 +38,56 @@ class BackupAioSqliteConnection:
         self._backup_service.backup_before_write()
         self._backup_checked = True
 
-    async def execute(self, sql: str, parameters=None):
-        await self._backup_before_write_once(sql)
+    def execute(self, sql: str, parameters=None):
         if parameters is None:
-            return await self._db.execute(sql)
-        return await self._db.execute(sql, parameters)
+            operation = self._db.execute(sql)
+        else:
+            operation = self._db.execute(sql, parameters)
+        return BackupAioSqliteOperation(
+            self._backup_before_write_once(sql),
+            operation,
+        )
 
-    async def executemany(self, sql: str, parameters):
-        await self._backup_before_write_once(sql)
-        return await self._db.executemany(sql, parameters)
+    def executemany(self, sql: str, parameters):
+        return BackupAioSqliteOperation(
+            self._backup_before_write_once(sql),
+            self._db.executemany(sql, parameters),
+        )
 
-    async def executescript(self, sql_script: str):
-        await self._backup_before_write_once(sql_script)
-        return await self._db.executescript(sql_script)
+    def executescript(self, sql_script: str):
+        return BackupAioSqliteOperation(
+            self._backup_before_write_once(sql_script),
+            self._db.executescript(sql_script),
+        )
+
+
+class BackupAioSqliteOperation:
+    """Preserve aiosqlite's awaitable + async context manager behavior."""
+
+    def __init__(self, backup_coro, operation) -> None:
+        self._backup_coro = backup_coro
+        self._operation = operation
+        self._backup_done = False
+
+    async def _run_backup_once(self) -> None:
+        if self._backup_done:
+            return
+        await self._backup_coro
+        self._backup_done = True
+
+    async def _await_operation(self):
+        await self._run_backup_once()
+        return await self._operation
+
+    def __await__(self):
+        return self._await_operation().__await__()
+
+    async def __aenter__(self):
+        await self._run_backup_once()
+        return await self._operation.__aenter__()
+
+    async def __aexit__(self, exc_type, exc, tb):
+        return await self._operation.__aexit__(exc_type, exc, tb)
 
 
 # Full schema (normalized policies + per-type detail tables). Multi-tenant via customers.user_id.
