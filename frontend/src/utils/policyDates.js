@@ -27,3 +27,18 @@ export function daysLeftUntil(endDate) {
   const end = startOfDay(endDate);
   return Math.round((end - today) / 86400000);
 }
+
+/** "YYYY-MM-DD" in the user's local timezone (avoids the UTC drift toISOString gives). */
+export function formatLocalYMD(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+/** Tomorrow's local YYYY-MM-DD — used for "snooze until tomorrow" reminders. */
+export function tomorrowYMD() {
+  const t = new Date();
+  t.setDate(t.getDate() + 1);
+  return formatLocalYMD(t);
+}

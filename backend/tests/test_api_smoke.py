@@ -41,21 +41,38 @@ def client() -> Iterator[TestClient]:
     tmp.close()
     db_path = tmp.name
     os.environ["INSURANCE_DB_PATH"] = db_path
-    os.environ.setdefault("AUTH_JWT_SECRET", "test-only-jwt-secret")
-    os.environ.setdefault("INITIAL_ADMIN_EMAIL", "admin@test.local")
-    os.environ.setdefault("INITIAL_ADMIN_NAME", "Test Admin")
+    os.environ["AUTH_JWT_SECRET"] = "test-only-jwt-secret-at-least-32-chars-long"
+    os.environ["INITIAL_ADMIN_EMAIL"] = "admin@test.local"
+    os.environ["INITIAL_ADMIN_NAME"] = "Test Admin"
 
+    # Flush *all* cached backend modules including submodules so
+    # ``database.connection`` re-evaluates ``DB_PATH`` from the new env var.
+    _backend_roots = {
+        "server",
+        "deps",
+        "database",
+        "db_path",
+        "schemas",
+        "routers",
+        "repositories",
+        "domain",
+        "services",
+    }
     for mod_name in list(sys.modules):
-        if mod_name in {"server", "deps", "database", "db_path", "schemas"} or (
-            mod_name.startswith(("routers.", "repositories.", "domain.", "services."))
-            or mod_name in {"routers", "repositories", "domain", "services"}
-        ):
+        if mod_name.split(".", 1)[0] in _backend_roots:
             del sys.modules[mod_name]
 
     server = importlib.import_module("server")
     security = importlib.import_module("domain.security")
     app_users_repo_mod = importlib.import_module("repositories.app_users")
     database_mod = importlib.import_module("database")
+
+    # ``server.py`` calls ``load_dotenv(.., override=True)`` at import time
+    # which overwrites our test env vars with ``backend/.env`` values.
+    # Re-apply the test values so admin seeding & JWT signing use them.
+    os.environ["INITIAL_ADMIN_EMAIL"] = "admin@test.local"
+    os.environ["INITIAL_ADMIN_NAME"] = "Test Admin"
+    os.environ["AUTH_JWT_SECRET"] = "test-only-jwt-secret-at-least-32-chars-long"
 
     import asyncio
 

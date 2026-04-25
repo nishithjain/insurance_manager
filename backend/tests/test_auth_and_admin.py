@@ -42,21 +42,40 @@ def app_bundle() -> Iterator[dict]:
     tmp.close()
     db_path = tmp.name
     os.environ["INSURANCE_DB_PATH"] = db_path
-    os.environ.setdefault("AUTH_JWT_SECRET", "test-jwt-secret-at-least-32-chars-long-x")
+    os.environ["AUTH_JWT_SECRET"] = "test-jwt-secret-at-least-32-chars-long-x"
     os.environ["INITIAL_ADMIN_EMAIL"] = "root@test.local"
     os.environ["INITIAL_ADMIN_NAME"] = "Root Admin"
 
+    # Flush *all* cached backend modules including submodules. Just deleting
+    # ``database`` doesn't drop ``database.connection``, which would keep a
+    # stale ``DB_PATH`` from a previous test module's bootstrap and route
+    # ``init_db()`` to the wrong file ("no such table: app_users").
+    _backend_roots = {
+        "server",
+        "deps",
+        "database",
+        "db_path",
+        "schemas",
+        "routers",
+        "repositories",
+        "domain",
+        "services",
+    }
     for mod_name in list(sys.modules):
-        if mod_name in {"server", "deps", "database", "db_path", "schemas"} or (
-            mod_name.startswith(("routers.", "repositories.", "domain.", "services."))
-            or mod_name in {"routers", "repositories", "domain", "services"}
-        ):
+        if mod_name.split(".", 1)[0] in _backend_roots:
             del sys.modules[mod_name]
 
     server = importlib.import_module("server")
     security = importlib.import_module("domain.security")
     database_mod = importlib.import_module("database")
     app_users_repo_mod = importlib.import_module("repositories.app_users")
+
+    # ``server.py`` calls ``load_dotenv(.., override=True)`` at import time
+    # which overwrites our test env vars with ``backend/.env`` values.
+    # Re-apply the test values so admin seeding & JWT signing use them.
+    os.environ["INITIAL_ADMIN_EMAIL"] = "root@test.local"
+    os.environ["INITIAL_ADMIN_NAME"] = "Root Admin"
+    os.environ["AUTH_JWT_SECRET"] = "test-jwt-secret-at-least-32-chars-long-x"
 
     async def _seed_admin():
         import aiosqlite
