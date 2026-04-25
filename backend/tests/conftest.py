@@ -56,6 +56,15 @@ _BACKEND_MODULES_TO_RELOAD = {
     "repositories",
     "domain",
     "services",
+    # Top-level modules imported transitively by routers/services that hold
+    # cached references to ``database.get_db`` / ``db_path.DB_PATH``. Without
+    # flushing them, the next test module's bootstrap would re-bind ``database``
+    # to a fresh tempfile, but these helpers would still talk to the previous
+    # (now-deleted) DB file.
+    "insurance_statistics",
+    "policy_export",
+    "statement_materialize",
+    "statement_parse",
 }
 
 
@@ -186,6 +195,11 @@ def app_env() -> Iterator[AppEnv]:
                 os.environ.pop(key, None)
             else:
                 os.environ[key] = value
+        # Drop the cached backend modules so the next test module's bootstrap
+        # (e.g. ``test_api_smoke.py``) re-imports them against its own
+        # ``INSURANCE_DB_PATH``. Without this, modules cached against the
+        # already-deleted temp DB can leak into the next module's connections.
+        _flush_backend_modules()
 
 
 @pytest.fixture()

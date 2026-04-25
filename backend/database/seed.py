@@ -27,22 +27,43 @@ INSURANCE_CATEGORY_DEFAULTS: tuple[str, ...] = (
     "Life",
     "Travel",
     "Property",
+    "Commercial",
+    "Other",
 )
 
 POLICY_TYPE_DEFAULTS: tuple[tuple[str, str], ...] = (
-    ("Motor", "Comprehensive"),
-    ("Motor", "Third Party"),
-    ("Motor", "Own Damage"),
-    ("Health", "Individual"),
+    # Motor
+    ("Motor", "Private Car"),
+    ("Motor", "Two Wheeler"),
+    ("Motor", "Commercial Vehicle"),
+    ("Motor", "Taxi"),
+    ("Motor", "Goods Vehicle"),
+    # Health
+    ("Health", "Individual Health"),
     ("Health", "Family Floater"),
-    ("Health", "Group Policy"),
-    ("Life", "Term Plan"),
-    ("Life", "Endowment Plan"),
+    ("Health", "Senior Citizen Health"),
+    ("Health", "Group Health"),
+    # Life
+    ("Life", "Term Life"),
+    ("Life", "Whole Life"),
+    ("Life", "Endowment"),
     ("Life", "ULIP"),
+    ("Life", "Money Back"),
+    # Travel
     ("Travel", "Domestic Travel"),
     ("Travel", "International Travel"),
+    ("Travel", "Student Travel"),
+    ("Travel", "Business Travel"),
+    # Property
     ("Property", "Home Insurance"),
-    ("Property", "Commercial Property"),
+    ("Property", "Shop Insurance"),
+    ("Property", "Fire Insurance"),
+    ("Property", "Burglary Insurance"),
+    # Commercial
+    ("Commercial", "Office Package"),
+    ("Commercial", "Marine"),
+    ("Commercial", "Liability"),
+    ("Commercial", "Workmen Compensation"),
 )
 
 

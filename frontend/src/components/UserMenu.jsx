@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { LogOut, Shield, UserCog, Users } from 'lucide-react';
+import { Layers, LogOut, Shield, UserCog, Users } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -67,6 +67,18 @@ export default function UserMenu() {
             <Link to="/admin/customers" className="cursor-pointer" data-testid="nav-customer-management">
               <Users className="w-4 h-4 mr-2" />
               Customer management
+            </Link>
+          </DropdownMenuItem>
+        )}
+        {isAdmin && (
+          <DropdownMenuItem asChild>
+            <Link
+              to="/admin/insurance-master"
+              className="cursor-pointer"
+              data-testid="nav-insurance-master"
+            >
+              <Layers className="w-4 h-4 mr-2" />
+              Insurance Master
             </Link>
           </DropdownMenuItem>
         )}
