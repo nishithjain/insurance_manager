@@ -41,10 +41,15 @@ export function filterPendingRowsBySearch(rows, q) {
   const s = (q || '').trim().toLowerCase();
   if (!s) return rows;
   return rows.filter((r) => {
-    const pn = (r.policy.policy_number && String(r.policy.policy_number).toLowerCase()) || '';
+    const insuranceType =
+      (r.policy.insurance_type_name && String(r.policy.insurance_type_name).toLowerCase()) || '';
+    const policyType =
+      (r.policy.policy_type_name && String(r.policy.policy_type_name).toLowerCase()) ||
+      (r.policy.policy_type && String(r.policy.policy_type).toLowerCase()) ||
+      '';
     const ph = (r.phone || '').toLowerCase();
     const cn = (r.customerName || '').toLowerCase();
-    return cn.includes(s) || pn.includes(s) || ph.includes(s);
+    return cn.includes(s) || insuranceType.includes(s) || policyType.includes(s) || ph.includes(s);
   });
 }
 

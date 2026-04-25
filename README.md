@@ -238,6 +238,137 @@ built React app from `frontend_dist/`, so a single port serves both.
 5. Sign in with that Gmail in the web UI and use the **User management**
    page to add more users.
 
+#### Detailed Google OAuth setup
+
+This project uses Google Sign-In for both the web app and the Android
+read-only app. Google returns an ID token to the client; the backend
+verifies that token against the configured OAuth 2.0 Web Client ID and
+then issues the app's JWT.
+
+##### Create or select a Google Cloud project
+
+1. Open https://console.cloud.google.com/.
+2. Create a new project or select the existing Insurance Manager project.
+3. Go to **APIs & Services**.
+
+##### Configure the OAuth consent screen
+
+1. Open **APIs & Services** -> **OAuth consent screen**.
+2. Choose **External** unless you are deploying only inside a Google
+   Workspace organization.
+3. Fill the required app details:
+   - App name: `Insurance Manager`
+   - User support email
+   - Developer contact email
+4. Save and continue through the remaining consent-screen steps.
+
+##### Create the Web OAuth client
+
+1. Open **APIs & Services** -> **Credentials**.
+2. Click **Create Credentials** -> **OAuth client ID**.
+3. Choose application type **Web application**.
+4. Add every frontend origin that will load Google Sign-In under
+   **Authorized JavaScript origins**. These values must match exactly,
+   including protocol and port:
+
+   ```text
+   http://localhost:3000
+   http://localhost:5173
+   http://127.0.0.1:8000
+   http://<YOUR-LAN-IP>:8000
+   https://your-domain.com
+   ```
+
+5. If you later add a server-side OAuth callback flow, add matching
+   **Authorized redirect URIs** such as:
+
+   ```text
+   http://localhost:8000/auth/google/callback
+   http://<YOUR-LAN-IP>:8000/auth/google/callback
+   https://your-domain.com/auth/google/callback
+   ```
+
+   The current app login uses Google ID tokens through
+   `POST /api/auth/google`, so the JavaScript origins are the important
+   entries for fixing `origin_mismatch`.
+
+6. Save the Web Client ID. Use this same Web Client ID in the backend,
+   frontend, and Android app.
+
+##### Create the Android OAuth client
+
+1. In **Credentials**, click **Create Credentials** -> **OAuth client ID**.
+2. Choose application type **Android**.
+3. Enter the Android package name, for example:
+
+   ```text
+   com.insurancemanager.app
+   ```
+
+4. Add the SHA-1 certificate fingerprint. In Android Studio, open
+   **Gradle** -> **app** -> **Tasks** -> **android** -> **signingReport**,
+   then copy the SHA-1 from the debug or release variant you are using.
+
+The Android OAuth client registers the app with Google, but the Android
+code still sends tokens for the Web Client ID. Set
+`GOOGLE_WEB_CLIENT_ID` to the Web Client ID, not the Android Client ID.
+
+##### Configure the app
+
+Backend `backend/.env`:
+
+```dotenv
+GOOGLE_CLIENT_ID=<web OAuth client ID>
+AUTH_JWT_SECRET=<strong random secret>
+INITIAL_ADMIN_EMAIL=<your Gmail address>
+```
+
+Frontend `frontend/.env`:
+
+```dotenv
+REACT_APP_GOOGLE_CLIENT_ID=<same web OAuth client ID>
+```
+
+Android `insurance-android/gradle.properties` or
+`~/.gradle/gradle.properties`:
+
+```properties
+GOOGLE_WEB_CLIENT_ID=<same web OAuth client ID>
+```
+
+For local-only development without Google Sign-In, you can enable the
+dev login endpoint:
+
+```dotenv
+ALLOW_DEV_AUTH=true
+```
+
+Set `ALLOW_DEV_AUTH=false` or remove it in production.
+
+##### Finish setup and test
+
+1. Pick a strong `AUTH_JWT_SECRET`:
+   ```bash
+   python -c "import secrets; print(secrets.token_urlsafe(48))"
+   ```
+2. Set `INITIAL_ADMIN_EMAIL` to your own Gmail. The first backend boot
+   will log `Seeded initial admin app_user '...'`.
+3. Restart the backend after editing `backend/.env`.
+4. Restart the frontend after editing `frontend/.env`.
+5. Rebuild the Android app after editing `gradle.properties`.
+6. Sign in with that Gmail in the web UI and use the **User management**
+   page to add more users.
+
+##### Common Google Sign-In issues
+
+| Error | Fix |
+|---|---|
+| `Error 400: origin_mismatch` | Add the exact web origin shown in the browser address bar to the Web Client's **Authorized JavaScript origins**. Include the port. |
+| `Authentication is not configured` | Set `GOOGLE_CLIENT_ID` in `backend/.env`, set `AUTH_JWT_SECRET`, then restart the backend. |
+| Google button says Sign-In is not configured | Set `REACT_APP_GOOGLE_CLIENT_ID` in `frontend/.env`, then restart the frontend. |
+| Android login fails with invalid client ID | Set `GOOGLE_WEB_CLIENT_ID` to the Web Client ID, not the Android Client ID, then rebuild. |
+| SHA-1 mismatch on Android | Add the SHA-1 for the debug or release certificate actually used to build the app. |
+
 ---
 
 ## How to run the backend
@@ -328,6 +459,29 @@ all writes happen through the web UI.
   but never block normal operation.
 - For routine operation you should not have to edit the database
   manually.
+
+### Clear application data
+
+`backend\clear_all_data.bat` deletes application rows while keeping the
+database schema and reference tables intact. By default it targets the
+repo database at `backend\insurance.db`:
+
+```powershell
+& ".\backend\clear_all_data.bat"
+```
+
+To clear data from an installed copy, stop the Windows service first,
+pass the installed database path with `--db`, then start the service
+again. Run PowerShell as Administrator when the app is installed under
+`C:\Program Files`.
+
+```powershell
+& "C:\Program Files\InsuranceManagerBackend\service.bat" stop
+& ".\backend\clear_all_data.bat" --db "C:\Program Files\InsuranceManagerBackend\backend\insurance.db"
+& "C:\Program Files\InsuranceManagerBackend\service.bat" start
+```
+
+In PowerShell, use `&` before quoted `.bat` paths when passing arguments.
 
 ---
 
