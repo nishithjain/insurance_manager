@@ -183,6 +183,25 @@ export const adminCustomerAPI = {
   update: (id, data) => api.put(`/admin/customers/${id}`, data),
 };
 
+/**
+ * Insurance / Policy taxonomy (cascading dropdowns).
+ *
+ * Maps directly to ``/api/insurance-types`` and ``/api/policy-types`` on
+ * the backend. The parent dropdown's id is sent to the child endpoint as
+ * ``insurance_type_id`` so callers don't need to know about the
+ * underlying ``insurance_categories`` table name.
+ */
+export const typesAPI = {
+  listInsuranceTypes: () => api.get('/insurance-types'),
+  listPolicyTypes: (insuranceTypeId) =>
+    api.get('/policy-types', {
+      params:
+        insuranceTypeId != null && insuranceTypeId !== ''
+          ? { insurance_type_id: insuranceTypeId }
+          : undefined,
+    }),
+};
+
 /** Admin-only user management */
 export const usersAPI = {
   list: (params) => api.get('/users', { params }),

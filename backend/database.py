@@ -157,6 +157,35 @@ CREATE TABLE IF NOT EXISTS insurance_types (
     category_group TEXT NOT NULL
 );
 
+-- New (post-refactor) taxonomy. Sits side-by-side with the legacy
+-- ``insurance_types`` table to keep existing FKs and exports working:
+--   insurance_categories  = high-level "Insurance Type"  (Motor, Health, ...)
+--   policy_types          = specific variant under a category
+--                           (Comprehensive, Third Party, Family Floater, ...)
+-- ``policies.policy_type_id`` is added below via ALTER (see _migrate_insurance_taxonomy).
+CREATE TABLE IF NOT EXISTS insurance_categories (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1)),
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS policy_types (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    insurance_category_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1)),
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (insurance_category_id, name),
+    FOREIGN KEY (insurance_category_id)
+        REFERENCES insurance_categories(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_policy_types_category
+    ON policy_types(insurance_category_id);
+
 CREATE TABLE IF NOT EXISTS payment_statuses (
     payment_status_id INTEGER PRIMARY KEY AUTOINCREMENT,
     status_name TEXT NOT NULL UNIQUE
@@ -336,7 +365,90 @@ async def _migrate_legacy_columns(db: aiosqlite.Connection) -> None:
     await _migrate_app_settings_table(db)
     await _migrate_policy_payment_columns(db)
     await _migrate_payment_status_vocabulary(db)
+    await _migrate_insurance_taxonomy(db)
     await _bootstrap_initial_admin(db)
+
+
+# ---- Insurance / Policy taxonomy --------------------------------------------
+#
+# Two-layer master data: ``insurance_categories`` (parent) and ``policy_types``
+# (child). Seeded with sensible defaults so the UI dropdowns are populated on
+# first run. Existing ``insurance_types`` rows are kept untouched — they back
+# the legacy ``policies.insurance_type_id`` FK and stay the source of truth
+# for the per-LOB detail tables (motor / health / property).
+INSURANCE_CATEGORY_DEFAULTS: tuple[str, ...] = (
+    "Motor",
+    "Health",
+    "Life",
+    "Travel",
+    "Property",
+)
+
+POLICY_TYPE_DEFAULTS: tuple[tuple[str, str], ...] = (
+    ("Motor", "Comprehensive"),
+    ("Motor", "Third Party"),
+    ("Motor", "Own Damage"),
+    ("Health", "Individual"),
+    ("Health", "Family Floater"),
+    ("Health", "Group Policy"),
+    ("Life", "Term Plan"),
+    ("Life", "Endowment Plan"),
+    ("Life", "ULIP"),
+    ("Travel", "Domestic Travel"),
+    ("Travel", "International Travel"),
+    ("Property", "Home Insurance"),
+    ("Property", "Commercial Property"),
+)
+
+
+async def _migrate_insurance_taxonomy(db: aiosqlite.Connection) -> None:
+    """
+    Add ``policies.policy_type_id`` and seed the new master tables.
+
+    Idempotent: tables/columns are guarded by ``IF NOT EXISTS`` /
+    ``PRAGMA table_info`` checks. Existing policy rows are left with
+    ``policy_type_id = NULL`` because the variant cannot be inferred from
+    the legacy ``insurance_types`` rows (which stored coverage-shape labels
+    like "Private Car", not variants like "Comprehensive").
+    """
+    async with db.execute("PRAGMA table_info(policies)") as cursor:
+        names = {r[1] for r in await cursor.fetchall()}
+    if "policy_type_id" not in names:
+        await db.execute("ALTER TABLE policies ADD COLUMN policy_type_id INTEGER")
+        await db.execute(
+            "CREATE INDEX IF NOT EXISTS idx_policies_policy_type_id "
+            "ON policies(policy_type_id)"
+        )
+
+    now = datetime.now(timezone.utc).isoformat()
+    for name in INSURANCE_CATEGORY_DEFAULTS:
+        await db.execute(
+            """INSERT INTO insurance_categories (name, is_active, created_at, updated_at)
+               SELECT ?, 1, ?, ?
+               WHERE NOT EXISTS (
+                 SELECT 1 FROM insurance_categories WHERE name = ? COLLATE NOCASE
+               )""",
+            (name, now, now, name),
+        )
+
+    async with db.execute("SELECT id, name FROM insurance_categories") as cur:
+        cat_rows = await cur.fetchall()
+    cat_id_by_name = {str(r["name"]).strip().lower(): int(r["id"]) for r in cat_rows}
+
+    for category, ptype in POLICY_TYPE_DEFAULTS:
+        cat_id = cat_id_by_name.get(category.lower())
+        if cat_id is None:
+            continue
+        await db.execute(
+            """INSERT INTO policy_types
+                 (insurance_category_id, name, is_active, created_at, updated_at)
+               SELECT ?, ?, 1, ?, ?
+               WHERE NOT EXISTS (
+                 SELECT 1 FROM policy_types
+                 WHERE insurance_category_id = ? AND name = ? COLLATE NOCASE
+               )""",
+            (cat_id, ptype, now, now, cat_id, ptype),
+        )
 
 
 async def _bootstrap_initial_admin(db: aiosqlite.Connection) -> None:

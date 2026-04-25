@@ -898,8 +898,12 @@ const Dashboard = () => {
                             {policy.policy_number || '—'}
                           </p>
                           <p className="truncate">
+                            <span className="text-gray-500">Insurance type: </span>
+                            {policy.insurance_type_name || policy.policy_type || '—'}
+                          </p>
+                          <p className="truncate">
                             <span className="text-gray-500">Policy type: </span>
-                            {policy.policy_type || '—'}
+                            {policy.policy_type_name || policy.policy_type || '—'}
                           </p>
                           <p className="truncate">
                             <span className="text-gray-500">Company: </span>

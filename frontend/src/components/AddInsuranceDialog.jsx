@@ -18,14 +18,28 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { customerAPI, policyAPI } from '@/utils/api';
+import { customerAPI, policyAPI, typesAPI } from '@/utils/api';
 import { ShieldPlus, Search, X } from 'lucide-react';
 
 const MAX_SEARCH_RESULTS = 150;
 
+// Best-effort mapping from the new Insurance Type name to the legacy
+// ``policy_type`` slug (POLICY_SLUG_TO_TYPE_NAME on the backend). Sent
+// alongside ``policy_type_id`` purely for back-compat — the backend
+// prefers the new id when it's present.
+const LEGACY_SLUG_FOR_INSURANCE_TYPE = {
+  motor: 'auto',
+  health: 'health',
+  property: 'home',
+  life: 'life',
+  travel: 'auto',
+};
+
 const emptyPolicy = () => ({
   policy_number: '',
   policy_type: 'auto',
+  insurance_type_id: '',
+  policy_type_id: '',
   start_date: new Date().toISOString().split('T')[0],
   end_date: '',
   premium: '',
@@ -62,6 +76,56 @@ const AddInsuranceDialog = ({ customers = [], policies = [], onSuccess }) => {
   const [customerQuery, setCustomerQuery] = useState('');
   /** Which existing policy row is expanded to show full details (existing-customer mode). */
   const [viewPolicyId, setViewPolicyId] = useState(null);
+  /** Insurance Type master rows (cascading parent dropdown). */
+  const [insuranceTypes, setInsuranceTypes] = useState([]);
+  /** Policy Type rows for the currently selected Insurance Type. */
+  const [policyTypes, setPolicyTypes] = useState([]);
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await typesAPI.listInsuranceTypes();
+        if (!cancelled) setInsuranceTypes(res.data || []);
+      } catch (err) {
+        console.warn('Failed to load insurance types', err);
+        if (!cancelled) setInsuranceTypes([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
+
+  useEffect(() => {
+    const itid = policyForm.insurance_type_id;
+    if (!itid) {
+      setPolicyTypes([]);
+      return undefined;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await typesAPI.listPolicyTypes(itid);
+        if (!cancelled) setPolicyTypes(res.data || []);
+      } catch (err) {
+        console.warn('Failed to load policy types', err);
+        if (!cancelled) setPolicyTypes([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [policyForm.insurance_type_id]);
+
+  const selectedInsuranceType = useMemo(
+    () =>
+      insuranceTypes.find(
+        (t) => String(t.id) === String(policyForm.insurance_type_id)
+      ) || null,
+    [insuranceTypes, policyForm.insurance_type_id]
+  );
 
   const filteredCustomers = useMemo(() => {
     const q = customerQuery.trim().toLowerCase();
@@ -160,10 +224,28 @@ const AddInsuranceDialog = ({ customers = [], policies = [], onSuccess }) => {
         return;
       }
 
+      if (!policyForm.insurance_type_id) {
+        alert('Select an Insurance Type.');
+        return;
+      }
+      if (!policyForm.policy_type_id) {
+        alert('Select a Policy Type.');
+        return;
+      }
+
+      // Derive the legacy slug from the chosen Insurance Type so older
+      // backend code paths (e.g. resolve_insurance_type_id) keep a
+      // sensible fallback. Backend prefers ``policy_type_id`` when set.
+      const itName = (selectedInsuranceType?.name || '').toLowerCase();
+      const legacySlug =
+        LEGACY_SLUG_FOR_INSURANCE_TYPE[itName] || policyForm.policy_type || 'auto';
+
       await policyAPI.create({
         customer_id: customerId,
         policy_number: policyForm.policy_number.trim(),
-        policy_type: policyForm.policy_type,
+        policy_type: legacySlug,
+        insurance_type_id: Number(policyForm.insurance_type_id),
+        policy_type_id: Number(policyForm.policy_type_id),
         start_date: policyForm.start_date,
         end_date: policyForm.end_date,
         premium,
@@ -508,23 +590,60 @@ const AddInsuranceDialog = ({ customers = [], policies = [], onSuccess }) => {
                 placeholder="e.g. POL-12345"
               />
             </div>
-            <div>
-              <Label>Insurance type *</Label>
-              <Select
-                value={policyForm.policy_type}
-                onValueChange={(v) => setPolicyForm({ ...policyForm, policy_type: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="auto">Motor / auto</SelectItem>
-                  <SelectItem value="health">Health</SelectItem>
-                  <SelectItem value="home">Property / home</SelectItem>
-                  <SelectItem value="life">Life</SelectItem>
-                  <SelectItem value="business">Business</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label>Insurance type *</Label>
+                <Select
+                  value={policyForm.insurance_type_id ? String(policyForm.insurance_type_id) : ''}
+                  onValueChange={(v) =>
+                    setPolicyForm((prev) => ({
+                      ...prev,
+                      insurance_type_id: v,
+                      policy_type_id: '',
+                    }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select category…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {insuranceTypes.map((t) => (
+                      <SelectItem key={t.id} value={String(t.id)}>
+                        {t.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Policy type *</Label>
+                <Select
+                  value={policyForm.policy_type_id ? String(policyForm.policy_type_id) : ''}
+                  onValueChange={(v) =>
+                    setPolicyForm((prev) => ({ ...prev, policy_type_id: v }))
+                  }
+                  disabled={!policyForm.insurance_type_id || policyTypes.length === 0}
+                >
+                  <SelectTrigger>
+                    <SelectValue
+                      placeholder={
+                        policyForm.insurance_type_id
+                          ? policyTypes.length
+                            ? 'Select variant…'
+                            : 'No variants'
+                          : 'Pick insurance type first'
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {policyTypes.map((t) => (
+                      <SelectItem key={t.id} value={String(t.id)}>
+                        {t.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>

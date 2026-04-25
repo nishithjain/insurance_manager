@@ -35,6 +35,7 @@ from routers import (
     statements,
     sync,
     system,
+    types as types_router,
 )
 
 
@@ -135,6 +136,7 @@ api_protected.include_router(statements.router)
 api_protected.include_router(exports.router)
 api_protected.include_router(sync.router)
 api_protected.include_router(app_users.router)
+api_protected.include_router(types_router.router)
 
 app.include_router(api_public)
 app.include_router(api_protected)

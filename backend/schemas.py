@@ -74,7 +74,34 @@ class CustomerAdminUpdate(BaseModel):
     address: Optional[str] = None
 
 
-# ============= POLICY =============
+# ============= POLICY / INSURANCE TAXONOMY =============
+#
+# Two-layer taxonomy added in the insurance/policy-type refactor:
+#   InsuranceTypeOut → master row from ``insurance_categories``
+#                      (Motor, Health, Life, Travel, Property)
+#   PolicyTypeOut    → master row from ``policy_types`` (specific variant)
+#
+# Existing ``Policy.policy_type`` (text) is kept untouched for back-compat
+# with the Android client and CSV exports — it still carries the legacy
+# ``insurance_types.insurance_type_name`` value.
+
+
+class InsuranceTypeOut(BaseModel):
+    """Parent category (a.k.a. "Insurance Type")."""
+
+    id: int
+    name: str
+    is_active: bool = True
+
+
+class PolicyTypeOut(BaseModel):
+    """Specific variant under an insurance type."""
+
+    id: int
+    insurance_type_id: int
+    name: str
+    is_active: bool = True
+
 
 class Policy(BaseModel):
     id: str
@@ -98,6 +125,11 @@ class Policy(BaseModel):
     renewal_resolution_note: Optional[str] = None
     renewal_resolved_at: Optional[str] = None
     renewal_resolved_by: Optional[str] = None
+    # New taxonomy (additive — clients that don't know about these are unaffected).
+    insurance_type_id: Optional[int] = None
+    insurance_type_name: Optional[str] = None
+    policy_type_id: Optional[int] = None
+    policy_type_name: Optional[str] = None
 
 
 class PolicyCreate(BaseModel):
@@ -108,6 +140,10 @@ class PolicyCreate(BaseModel):
     end_date: str
     premium: float
     status: str = "active"
+    # New taxonomy. Optional for back-compat with mobile clients that still
+    # send only the legacy ``policy_type`` slug.
+    insurance_type_id: Optional[int] = None
+    policy_type_id: Optional[int] = None
 
 
 class PolicyUpdateCustomerFields(BaseModel):
