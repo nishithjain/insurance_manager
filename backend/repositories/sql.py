@@ -14,7 +14,7 @@ from typing import Any, Optional
 import aiosqlite
 from fastapi import HTTPException
 
-from schemas import Customer, Policy
+from schemas import Customer, CustomerAdmin, Policy
 
 
 # ---- SELECT fragments --------------------------------------------------------
@@ -29,6 +29,25 @@ CUSTOMER_SELECT = """
         (SELECT raw_address FROM customer_addresses a
          WHERE a.customer_id = c.customer_id ORDER BY a.address_id LIMIT 1) AS address,
         c.created_at
+    FROM customers c
+"""
+
+
+# Admin grid SELECT — adds updated_at and a correlated policy_count.
+# Kept separate from CUSTOMER_SELECT so the per-user mobile/web contract
+# (Customer schema) is unchanged.
+CUSTOMER_ADMIN_SELECT = """
+    SELECT
+        c.customer_id AS id,
+        c.user_id,
+        c.full_name AS name,
+        c.email,
+        c.phone_number AS phone,
+        (SELECT raw_address FROM customer_addresses a
+         WHERE a.customer_id = c.customer_id ORDER BY a.address_id LIMIT 1) AS address,
+        c.created_at,
+        c.updated_at,
+        (SELECT COUNT(1) FROM policies p WHERE p.customer_id = c.customer_id) AS policy_count
     FROM customers c
 """
 
@@ -169,6 +188,26 @@ def customer_row_to_model(row: dict) -> Customer:
         phone=row.get("phone"),
         address=row.get("address"),
         created_at=row["created_at"] or "",
+    )
+
+
+def customer_admin_row_to_model(row: dict) -> CustomerAdmin:
+    """Materialize a ``CUSTOMER_ADMIN_SELECT`` row into :class:`CustomerAdmin`."""
+    pc = row.get("policy_count")
+    try:
+        pc = int(pc) if pc is not None else 0
+    except (TypeError, ValueError):
+        pc = 0
+    return CustomerAdmin(
+        id=str(row["id"]),
+        user_id=row["user_id"],
+        name=row["name"] or "",
+        email=row.get("email"),
+        phone=row.get("phone"),
+        address=row.get("address"),
+        created_at=row["created_at"] or "",
+        updated_at=row.get("updated_at"),
+        policy_count=pc,
     )
 
 
