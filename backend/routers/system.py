@@ -26,7 +26,7 @@ async def health():
     }
     if not out["database_exists"]:
         out["hint"] = (
-            "No insurance.db yet. Run the API from backend/ (see scripts/windows/run_backend.bat) so the file is "
+            "No insurance.db yet. Run the API from backend/ (see scripts/run_backend.bat) so the file is "
             "created next to server.py, or set INSURANCE_DB_PATH in backend/.env to an absolute path."
         )
         return out

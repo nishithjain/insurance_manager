@@ -1,13 +1,13 @@
 @echo off
 setlocal
-set "REPO_ROOT=%~dp0..\.."
+set "REPO_ROOT=%~dp0.."
 pushd "%REPO_ROOT%"
 for %%I in ("%CD%") do set "REPO_ROOT_ABS=%%~fI"
-set "SERVICE_ENTRY=%REPO_ROOT_ABS%\scripts\windows\windows_service.py"
+set "SERVICE_ENTRY=%REPO_ROOT_ABS%\scripts\windows_service.py"
 set "SERVICE_ICON=%REPO_ROOT_ABS%\installer\InsuranceManager.ico"
 
 if not exist ".venv\Scripts\python.exe" (
-  echo No .venv found. Run scripts\windows\recreate_venv.bat from the repo root first.
+  echo No .venv found. Run scripts\recreate_venv.bat from the repo root first.
   exit /b 1
 )
 if not exist "%SERVICE_ENTRY%" (
